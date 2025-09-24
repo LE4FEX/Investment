@@ -1,27 +1,386 @@
 const STORAGE_KEY = "investment-toolkit-state";
+const runtimeConfig = window.__ENV__ || window.env || {};
 const clone = (value) =>
   typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 
-const currencyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  maximumFractionDigits: 2
-});
+const languageOptions = {
+  en: { label: "English", locale: "en-US", htmlLang: "en" },
+  th: { label: "ไทย", locale: "th-TH", htmlLang: "th" }
+};
 
-const numberFormatter = new Intl.NumberFormat("en-US", {
-  maximumFractionDigits: 2
-});
+const currencyOptions = [
+  { code: "USD", label: "USD — US Dollar" },
+  { code: "THB", label: "THB — Thai Baht" },
+  { code: "EUR", label: "EUR — Euro" },
+  { code: "JPY", label: "JPY — Japanese Yen" }
+];
 
-const percentFormatter = new Intl.NumberFormat("en-US", {
-  style: "percent",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2
-});
+const translations = {
+  en: {
+    app: { title: "Investment Toolkit" },
+    nav: {
+      portfolio: "Portfolio",
+      quotes: "Quotes",
+      technicals: "Technicals",
+      backtest: "Backtest",
+      dca: "DCA",
+      alerts: "Alerts",
+      settings: "Settings"
+    },
+    placeholders: {
+      symbol: "e.g. AAPL",
+      apiKey: "Enter API key"
+    },
+    portfolio: {
+      heading: "Portfolio Tracker",
+      form: {
+        symbol: "Ticker",
+        shares: "Shares",
+        price: "Price",
+        submit: "Add Position",
+        invalid: "Enter valid symbol, shares, and price"
+      },
+      table: {
+        symbol: "Symbol",
+        shares: "Shares",
+        avgCost: "Avg Cost",
+        lastPrice: "Last Price",
+        value: "Value",
+        pl: "P/L"
+      },
+      empty: "No holdings yet. Add a position to get started.",
+      summary: {
+        value: "Portfolio Value",
+        cost: "Total Cost Basis",
+        pl: "Unrealized P/L"
+      }
+    },
+    quotes: {
+      heading: "Quotes & Watchlist",
+      form: {
+        symbol: "Symbol",
+        submit: "Add to Watchlist"
+      },
+      hint: "Uses Alpha Vantage if API key is saved, otherwise falls back to mock data.",
+      empty: "No symbols yet. Add one to start tracking quotes.",
+      card: {
+        last: "Last",
+        change: "Change"
+      },
+      chart: {
+        close: "{symbol} Close",
+        sma20: "SMA 20",
+        sma50: "SMA 50"
+      }
+    },
+    technicals: {
+      heading: "Technical Analysis",
+      form: {
+        symbol: "Symbol",
+        interval: "Interval",
+        daily: "Daily",
+        weekly: "Weekly",
+        submit: "Calculate"
+      },
+      summary: {
+        price: "Last Price",
+        rsi: "RSI (14)",
+        macd: "MACD",
+        bias: "Bias"
+      },
+      bias: {
+        neutral: "Neutral",
+        bullish: "Bullish (signal {bars} bars ago)",
+        bearish: "Bearish (signal {bars} bars ago)"
+      },
+      signals: {
+        title: "Recent Signals",
+        empty: "No crossover signals yet."
+      },
+      chart: {
+        close: "{symbol} Close",
+        sma20: "SMA 20",
+        sma50: "SMA 50"
+      }
+    },
+    backtest: {
+      heading: "Backtesting",
+      form: {
+        symbol: "Symbol",
+        short: "Short MA",
+        long: "Long MA",
+        submit: "Run Backtest",
+        invalid: "Enter valid symbol and ensure Short MA < Long MA"
+      },
+      summary: {
+        strategyReturn: "Strategy Return",
+        strategyCagr: "Strategy CAGR",
+        buyHoldReturn: "Buy & Hold Return",
+        buyHoldCagr: "Buy & Hold CAGR",
+        completedTrades: "Completed Trades",
+        tradeStats: "{count} ({winRate})"
+      },
+      chart: {
+        strategy: "Strategy Equity",
+        buyHold: "Buy & Hold"
+      }
+    },
+    dca: {
+      heading: "DCA Simulator",
+      form: {
+        symbol: "Symbol",
+        amount: "Monthly Amount",
+        months: "Months",
+        submit: "Simulate",
+        invalid: "Enter valid symbol, monthly amount, and months"
+      },
+      empty: "Not enough data for DCA simulation.",
+      summary: {
+        invested: "Total Invested",
+        shares: "Total Shares",
+        value: "Current Value",
+        gain: "Net Gain"
+      },
+      chart: {
+        invested: "Invested",
+        value: "Value"
+      }
+    },
+    alerts: {
+      heading: "Alerts",
+      form: {
+        symbol: "Symbol",
+        rsiLow: "RSI Low",
+        rsiHigh: "RSI High",
+        submit: "Save Alert",
+        invalid: "Enter valid symbol and RSI thresholds"
+      },
+      empty: "No alerts configured. Add one to monitor RSI triggers.",
+      status: {
+        neutral: "Neutral",
+        oversold: "Oversold",
+        overbought: "Overbought"
+      },
+      card: {
+        rsi: "RSI: {value}",
+        thresholds: "Low: {low} / High: {high}",
+        status: "Status: {status}"
+      }
+    },
+    settings: {
+      heading: "Settings",
+      form: {
+        apiKey: "Alpha Vantage API Key",
+        defaultSymbol: "Default Symbol",
+        currency: "Display Currency",
+        language: "Language",
+        useNetlify: "Use Netlify proxy (serverless API key)",
+        submit: "Save Settings",
+        reset: "Reset App"
+      },
+      saveSuccess: "Settings saved.",
+      resetConfirm: "Reset all data?",
+      resetDone: "Application reset."
+    },
+    footer: {
+      disclaimer: "Data provided via Alpha Vantage (or mock data). Educational use only."
+    },
+    common: {
+      remove: "Remove",
+      price: "Price",
+      signal: {
+        buy: "BUY",
+        sell: "SELL"
+      }
+    }
+  },
+  th: {
+    app: { title: "ชุดเครื่องมือการลงทุน" },
+    nav: {
+      portfolio: "พอร์ต",
+      quotes: "ราคาหุ้น",
+      technicals: "เทคนิคอล",
+      backtest: "ทดสอบย้อนหลัง",
+      dca: "DCA",
+      alerts: "แจ้งเตือน",
+      settings: "ตั้งค่า"
+    },
+    placeholders: {
+      symbol: "เช่น AAPL",
+      apiKey: "กรอก API key"
+    },
+    portfolio: {
+      heading: "ตัวติดตามพอร์ต",
+      form: {
+        symbol: "สัญลักษณ์",
+        shares: "จำนวนหุ้น",
+        price: "ราคาซื้อ",
+        submit: "เพิ่มสถานะ",
+        invalid: "กรุณากรอกสัญลักษณ์ จำนวนหุ้น และราคาให้ถูกต้อง"
+      },
+      table: {
+        symbol: "สัญลักษณ์",
+        shares: "จำนวนหุ้น",
+        avgCost: "ต้นทุนเฉลี่ย",
+        lastPrice: "ราคาล่าสุด",
+        value: "มูลค่า",
+        pl: "กำไร/ขาดทุน"
+      },
+      empty: "ยังไม่มีการถือครอง เพิ่มรายการเพื่อเริ่มต้น",
+      summary: {
+        value: "มูลค่าพอร์ต",
+        cost: "เงินลงทุนรวม",
+        pl: "กำไร/ขาดทุนที่ยังไม่รับรู้"
+      }
+    },
+    quotes: {
+      heading: "ราคาและวอทช์ลิสต์",
+      form: {
+        symbol: "สัญลักษณ์",
+        submit: "เพิ่มเข้าวอทช์ลิสต์"
+      },
+      hint: "ใช้ข้อมูล Alpha Vantage เมื่อบันทึก API key หากไม่มีก็จะใช้ข้อมูลจำลอง",
+      empty: "ยังไม่มีวอทช์ลิสต์ เพิ่มสัญลักษณ์เพื่อเริ่มติดตาม",
+      card: {
+        last: "ราคาล่าสุด",
+        change: "การเปลี่ยนแปลง"
+      },
+      chart: {
+        close: "ราคาปิด {symbol}",
+        sma20: "SMA 20",
+        sma50: "SMA 50"
+      }
+    },
+    technicals: {
+      heading: "วิเคราะห์เชิงเทคนิค",
+      form: {
+        symbol: "สัญลักษณ์",
+        interval: "ช่วงเวลา",
+        daily: "รายวัน",
+        weekly: "รายสัปดาห์",
+        submit: "คำนวณ"
+      },
+      summary: {
+        price: "ราคาล่าสุด",
+        rsi: "RSI (14)",
+        macd: "MACD",
+        bias: "มุมมอง"
+      },
+      bias: {
+        neutral: "เป็นกลาง",
+        bullish: "แนวโน้มขาขึ้น (สัญญาณ {bars} แท่งก่อน)",
+        bearish: "แนวโน้มขาลง (สัญญาณ {bars} แท่งก่อน)"
+      },
+      signals: {
+        title: "สัญญาณล่าสุด",
+        empty: "ยังไม่มีสัญญาณตัดกันของเส้นค่าเฉลี่ย"
+      },
+      chart: {
+        close: "ราคาปิด {symbol}",
+        sma20: "SMA 20",
+        sma50: "SMA 50"
+      }
+    },
+    backtest: {
+      heading: "ทดสอบย้อนหลัง",
+      form: {
+        symbol: "สัญลักษณ์",
+        short: "เส้นสั้น",
+        long: "เส้นยาว",
+        submit: "รันทดสอบ",
+        invalid: "กรุณากรอกสัญลักษณ์ และให้เส้นสั้น < เส้นยาว"
+      },
+      summary: {
+        strategyReturn: "ผลตอบแทนกลยุทธ์",
+        strategyCagr: "CAGR กลยุทธ์",
+        buyHoldReturn: "ผลตอบแทนซื้อถือ",
+        buyHoldCagr: "CAGR ซื้อถือ",
+        completedTrades: "จำนวนเทรด",
+        tradeStats: "{count} ({winRate})"
+      },
+      chart: {
+        strategy: "มูลค่ากลยุทธ์",
+        buyHold: "ซื้อถือ"
+      }
+    },
+    dca: {
+      heading: "ตัวจำลอง DCA",
+      form: {
+        symbol: "สัญลักษณ์",
+        amount: "เงินต่อเดือน",
+        months: "จำนวนเดือน",
+        submit: "จำลอง",
+        invalid: "กรุณากรอกสัญลักษณ์ จำนวนเงินต่อเดือน และจำนวนเดือนให้ถูกต้อง"
+      },
+      empty: "ข้อมูลไม่เพียงพอสำหรับการจำลอง DCA",
+      summary: {
+        invested: "เงินลงทุนรวม",
+        shares: "จำนวนหน่วยสะสม",
+        value: "มูลค่าปัจจุบัน",
+        gain: "กำไร/ขาดทุนสุทธิ"
+      },
+      chart: {
+        invested: "เงินลงทุน",
+        value: "มูลค่า"
+      }
+    },
+    alerts: {
+      heading: "แจ้งเตือน",
+      form: {
+        symbol: "สัญลักษณ์",
+        rsiLow: "RSI ต่ำ",
+        rsiHigh: "RSI สูง",
+        submit: "บันทึกแจ้งเตือน",
+        invalid: "กรุณากรอกสัญลักษณ์ และค่าช่วง RSI ให้ถูกต้อง"
+      },
+      empty: "ยังไม่มีการตั้งแจ้งเตือน เพิ่มเพื่อเฝ้าดู RSI",
+      status: {
+        neutral: "ปกติ",
+        oversold: "ขายมาก",
+        overbought: "ซื้อมาก"
+      },
+      card: {
+        rsi: "RSI: {value}",
+        thresholds: "ต่ำ: {low} / สูง: {high}",
+        status: "สถานะ: {status}"
+      }
+    },
+    settings: {
+      heading: "ตั้งค่า",
+      form: {
+        apiKey: "Alpha Vantage API Key",
+        defaultSymbol: "สัญลักษณ์เริ่มต้น",
+        currency: "สกุลเงินที่แสดง",
+        language: "ภาษา",
+        useNetlify: "ใช้ Netlify proxy (เก็บ API key บนเซิร์ฟเวอร์)",
+        submit: "บันทึกการตั้งค่า",
+        reset: "รีเซ็ตแอป"
+      },
+      saveSuccess: "บันทึกการตั้งค่าแล้ว",
+      resetConfirm: "ต้องการรีเซ็ตข้อมูลทั้งหมดหรือไม่?",
+      resetDone: "รีเซ็ตแอปแล้ว"
+    },
+    footer: {
+      disclaimer: "ข้อมูลจาก Alpha Vantage (หรือข้อมูลจำลอง) ใช้เพื่อการศึกษาเท่านั้น"
+    },
+    common: {
+      remove: "ลบ",
+      price: "ราคา",
+      signal: {
+        buy: "ซื้อ",
+        sell: "ขาย"
+      }
+    }
+  }
+};
 
 const defaultState = {
   settings: {
-    apiKey: "",
-    defaultSymbol: "AAPL"
+    apiKey: runtimeConfig.ALPHA_VANTAGE_API_KEY || "",
+    defaultSymbol: "AAPL",
+    currency: "USD",
+    language: "en",
+    useNetlifyProxy: Boolean(runtimeConfig.USE_NETLIFY_PROXY)
   },
   portfolio: [],
   watchlist: [],
@@ -29,6 +388,51 @@ const defaultState = {
 };
 
 const state = loadState();
+
+const Formatters = {
+  currencyFormatter: null,
+  numberFormatter: null,
+  percentFormatter: null,
+  locale: "en-US",
+  update() {
+    const language = languageOptions[state.settings.language] || languageOptions.en;
+    this.locale = language.locale;
+    try {
+      this.currencyFormatter = new Intl.NumberFormat(this.locale, {
+        style: "currency",
+        currency: state.settings.currency,
+        maximumFractionDigits: 2
+      });
+    } catch (error) {
+      console.warn("Falling back to USD currency formatter", error);
+      this.currencyFormatter = new Intl.NumberFormat(this.locale, {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 2
+      });
+    }
+    this.numberFormatter = new Intl.NumberFormat(this.locale, {
+      maximumFractionDigits: 4
+    });
+    this.percentFormatter = new Intl.NumberFormat(this.locale, {
+      style: "percent",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  },
+  currency(value) {
+    return Number.isFinite(value) ? this.currencyFormatter.format(value) : "N/A";
+  },
+  number(value) {
+    return Number.isFinite(value) ? this.numberFormatter.format(value) : "N/A";
+  },
+  percent(value) {
+    return Number.isFinite(value) ? this.percentFormatter.format(value) : "N/A";
+  }
+};
+
+Formatters.update();
+
 const uiState = {
   activeQuoteSymbol: state.watchlist[0] || state.settings.defaultSymbol || "AAPL",
   technicalsSymbol: state.settings.defaultSymbol || "AAPL"
@@ -39,11 +443,37 @@ const DataService = (() => {
   const seriesCache = new Map();
 
   async function fetchAlpha(params) {
-    if (!state.settings.apiKey) throw new Error("Missing API key");
-    const search = new URLSearchParams({ ...params, apikey: state.settings.apiKey });
-    const url = `https://www.alphavantage.co/query?${search.toString()}`;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const search = new URLSearchParams(params);
+
+    if (state.settings.useNetlifyProxy) {
+      try {
+        const response = await fetch(`/.netlify/functions/alphavantage?${search.toString()}`);
+        if (!response.ok) {
+          throw new Error(`Proxy HTTP ${response.status}`);
+        }
+        const data = await response.json();
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        return data;
+      } catch (error) {
+        console.warn("Netlify proxy failed", error);
+        if (!state.settings.apiKey) {
+          throw error;
+        }
+        // fall through and attempt direct request with client key
+      }
+    }
+
+    if (!state.settings.apiKey) {
+      throw new Error("Missing API credentials");
+    }
+
+    search.set("apikey", state.settings.apiKey);
+    const response = await fetch(`https://www.alphavantage.co/query?${search.toString()}`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
     const data = await response.json();
     if (data.Note || data["Error Message"] || Object.keys(data).length === 0) {
       throw new Error(data.Note || data["Error Message"] || "Alpha Vantage returned no data");
@@ -53,22 +483,27 @@ const DataService = (() => {
 
   async function getQuote(symbol) {
     const key = symbol.toUpperCase();
-    if (quoteCache.has(key)) return quoteCache.get(key);
+    if (quoteCache.has(key)) {
+      return quoteCache.get(key);
+    }
 
     let quote;
-    if (state.settings.apiKey) {
+    if (state.settings.apiKey || state.settings.useNetlifyProxy) {
       try {
         const payload = await fetchAlpha({ function: "GLOBAL_QUOTE", symbol: key });
         const raw = payload["Global Quote"] || {};
         const price = parseFloat(raw["05. price"]);
         const prevClose = parseFloat(raw["08. previous close"]) || parseFloat(raw["02. open"]);
         const change = parseFloat(raw["09. change"]);
-        const changePercent = raw["10. change percent"]
-          ? parseFloat(raw["10. change percent"].replace("%", ""))
+        const rawChangePercent = raw["10. change percent"];
+        const changePercent = rawChangePercent
+          ? parseFloat(rawChangePercent.replace("%", ""))
           : prevClose
           ? ((price - prevClose) / prevClose) * 100
           : 0;
-        if (!Number.isFinite(price)) throw new Error("Invalid quote response");
+        if (!Number.isFinite(price)) {
+          throw new Error("Invalid quote response");
+        }
         quote = {
           symbol: key,
           price,
@@ -77,7 +512,7 @@ const DataService = (() => {
           changePercent
         };
       } catch (error) {
-        console.warn("Falling back to mock quote", error);
+        console.warn("Quote fetch failed, using mock data", error);
       }
     }
 
@@ -91,16 +526,20 @@ const DataService = (() => {
 
   async function getSeries(symbol, interval = "daily") {
     const key = `${symbol.toUpperCase()}-${interval}`;
-    if (seriesCache.has(key)) return seriesCache.get(key);
+    if (seriesCache.has(key)) {
+      return seriesCache.get(key);
+    }
 
     let series;
-    if (state.settings.apiKey) {
+    if (state.settings.apiKey || state.settings.useNetlifyProxy) {
       try {
         const fn = interval === "weekly" ? "TIME_SERIES_WEEKLY_ADJUSTED" : "TIME_SERIES_DAILY_ADJUSTED";
         const payload = await fetchAlpha({ function: fn, symbol: symbol.toUpperCase(), outputsize: "full" });
         const rawKey = interval === "weekly" ? "Weekly Adjusted Time Series" : "Time Series (Daily)";
         const rawSeries = payload[rawKey];
-        if (!rawSeries) throw new Error("Missing time series data");
+        if (!rawSeries) {
+          throw new Error("Missing time series data");
+        }
         series = Object.entries(rawSeries).map(([date, values]) => ({
           date,
           open: parseFloat(values["1. open"]) || parseFloat(values["1. open "]),
@@ -114,7 +553,7 @@ const DataService = (() => {
           .filter((item) => Number.isFinite(item.close))
           .sort((a, b) => new Date(a.date) - new Date(b.date));
       } catch (error) {
-        console.warn("Falling back to mock series", error);
+        console.warn("Series fetch failed, using mock data", error);
       }
     }
 
@@ -146,7 +585,9 @@ const MockData = (() => {
 
   function createRng(seed) {
     let value = seed % 2147483647;
-    if (value <= 0) value += 2147483646;
+    if (value <= 0) {
+      value += 2147483646;
+    }
     return () => {
       value = (value * 16807) % 2147483647;
       return (value - 1) / 2147483646;
@@ -162,7 +603,9 @@ const MockData = (() => {
 
   function generateSeries(symbol, interval) {
     const key = `${symbol.toUpperCase()}-${interval}`;
-    if (cache.has(key)) return cache.get(key);
+    if (cache.has(key)) {
+      return cache.get(key);
+    }
 
     const rng = createRng(seedFrom(symbol + interval));
     const today = new Date();
@@ -235,7 +678,9 @@ const Indicators = {
     const queue = [];
     let sum = 0;
     values.forEach((value, index) => {
-      if (!Number.isFinite(value)) return;
+      if (!Number.isFinite(value)) {
+        return;
+      }
       queue.push(value);
       sum += value;
       if (queue.length > period) {
@@ -247,13 +692,14 @@ const Indicators = {
     });
     return result;
   },
-
   ema(values, period) {
     const result = new Array(values.length).fill(null);
     const k = 2 / (period + 1);
     let previous;
     values.forEach((value, index) => {
-      if (!Number.isFinite(value)) return;
+      if (!Number.isFinite(value)) {
+        return;
+      }
       if (previous === undefined) {
         previous = value;
       } else {
@@ -265,17 +711,14 @@ const Indicators = {
     });
     return result;
   },
-
   rsi(values, period = 14) {
     const result = new Array(values.length).fill(null);
     let gainSum = 0;
     let lossSum = 0;
-
     for (let i = 1; i < values.length; i++) {
       const change = values[i] - values[i - 1];
       const gain = Math.max(0, change);
       const loss = Math.max(0, -change);
-
       if (i <= period) {
         gainSum += gain;
         lossSum += loss;
@@ -292,40 +735,39 @@ const Indicators = {
         result[i] = 100 - 100 / (1 + rs);
       }
     }
-
     return result;
   },
-
   macd(values, fast = 12, slow = 26, signalPeriod = 9) {
     const emaFast = this.ema(values, fast);
     const emaSlow = this.ema(values, slow);
     const macdLine = values.map((_, index) => {
-      if (emaFast[index] === null || emaSlow[index] === null) return null;
+      if (emaFast[index] === null || emaSlow[index] === null) {
+        return null;
+      }
       return emaFast[index] - emaSlow[index];
     });
-    const signalLine = this.ema(macdLine.map((v) => (v === null ? 0 : v)), signalPeriod).map((v, index) =>
-      macdLine[index] === null ? null : v
-    );
+    const signalLine = this.ema(
+      macdLine.map((value) => (value === null ? 0 : value)),
+      signalPeriod
+    ).map((value, index) => (macdLine[index] === null ? null : value));
     const histogram = macdLine.map((value, index) =>
       value === null || signalLine[index] === null ? null : value - signalLine[index]
     );
     return { macdLine, signalLine, histogram };
   },
-
   crossoverSignals(series, shortPeriod, longPeriod) {
     const closes = series.map((point) => point.close);
     const shortMA = this.sma(closes, shortPeriod);
     const longMA = this.sma(closes, longPeriod);
     const signals = [];
-
     for (let i = 1; i < series.length; i++) {
       const prevShort = shortMA[i - 1];
       const prevLong = longMA[i - 1];
       const currShort = shortMA[i];
       const currLong = longMA[i];
-
-      if ([prevShort, prevLong, currShort, currLong].some((value) => value === null)) continue;
-
+      if ([prevShort, prevLong, currShort, currLong].some((value) => value === null)) {
+        continue;
+      }
       if (prevShort <= prevLong && currShort > currLong) {
         signals.push({ type: "buy", index: i, date: series[i].date, price: series[i].close });
       }
@@ -333,37 +775,9 @@ const Indicators = {
         signals.push({ type: "sell", index: i, date: series[i].date, price: series[i].close });
       }
     }
-
     return { shortMA, longMA, signals };
   }
 };
-
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return clone(defaultState);
-    const parsed = JSON.parse(raw);
-    return {
-      settings: { ...defaultState.settings, ...parsed.settings },
-      portfolio: parsed.portfolio ?? [],
-      watchlist: parsed.watchlist ?? [],
-      alerts: parsed.alerts ?? []
-    };
-  } catch (error) {
-    console.error("Failed to load state", error);
-    return clone(defaultState);
-  }
-}
-
-function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
-
-function resetState() {
-  Object.assign(state, clone(defaultState));
-  saveState();
-  DataService.clearCache();
-}
 
 const Dom = {
   panels: document.querySelectorAll(".panel"),
@@ -416,6 +830,9 @@ const Dom = {
     form: document.getElementById("settings-form"),
     apiKey: document.getElementById("settings-api-key"),
     defaultSymbol: document.getElementById("settings-default-symbol"),
+    currency: document.getElementById("settings-currency"),
+    language: document.getElementById("settings-language"),
+    netlifyProxy: document.getElementById("settings-netlify-proxy"),
     reset: document.getElementById("settings-reset")
   }
 };
@@ -429,24 +846,23 @@ const charts = {
 
 setupNavigation();
 wireForms();
+populateSettingsOptions();
 bootstrapState();
-renderPortfolio();
-renderWatchlist();
-renderAlerts();
-renderTechnicals(
-  Dom.technicals.symbol.value.trim().toUpperCase(),
-  Dom.technicals.interval.value
-);
+applyTranslations();
+renderPortfolio().catch(console.error);
+renderWatchlist().catch(console.error);
+renderAlerts().catch(console.error);
+renderTechnicals(Dom.technicals.symbol.value.trim().toUpperCase(), Dom.technicals.interval.value).catch(console.error);
 renderBacktest(
   Dom.backtest.symbol.value.trim().toUpperCase(),
   parseInt(Dom.backtest.shortInput.value, 10) || 50,
   parseInt(Dom.backtest.longInput.value, 10) || 200
-);
+).catch(console.error);
 renderDca(
   Dom.dca.symbol.value.trim().toUpperCase(),
   parseFloat(Dom.dca.amount.value) || 100,
   parseInt(Dom.dca.months.value, 10) || 12
-);
+).catch(console.error);
 
 function setupNavigation() {
   Dom.navButtons.forEach((btn) => {
@@ -476,15 +892,34 @@ function wireForms() {
   Dom.settings.reset.addEventListener("click", handleSettingsReset);
 }
 
-function bootstrapState() {
-  Dom.settings.apiKey.value = state.settings.apiKey;
-  Dom.settings.defaultSymbol.value = state.settings.defaultSymbol;
+let selectorsPopulated = false;
+function populateSettingsOptions() {
+  if (selectorsPopulated) {
+    return;
+  }
+  Dom.settings.currency.innerHTML = currencyOptions
+    .map((option) => `<option value="${option.code}">${option.label}</option>`)
+    .join("");
+  Dom.settings.language.innerHTML = Object.entries(languageOptions)
+    .map(([value, meta]) => `<option value="${value}">${meta.label}</option>`)
+    .join("");
+  selectorsPopulated = true;
+}
 
+function bootstrapState() {
+  Formatters.update();
   const defaultSymbol = (state.settings.defaultSymbol || "AAPL").toUpperCase();
-  if (!state.watchlist.length) {
-    state.watchlist.push(defaultSymbol);
+
+  if (!state.watchlist.includes(defaultSymbol)) {
+    state.watchlist.unshift(defaultSymbol);
     saveState();
   }
+
+  Dom.settings.apiKey.value = state.settings.apiKey;
+  Dom.settings.defaultSymbol.value = defaultSymbol;
+  Dom.settings.currency.value = state.settings.currency;
+  Dom.settings.language.value = state.settings.language;
+  Dom.settings.netlifyProxy.checked = state.settings.useNetlifyProxy;
 
   Dom.portfolio.symbol.value = defaultSymbol;
   Dom.quotes.symbol.value = "";
@@ -495,8 +930,83 @@ function bootstrapState() {
 
   uiState.activeQuoteSymbol = state.watchlist.includes(defaultSymbol)
     ? defaultSymbol
-    : state.watchlist[0];
+    : state.watchlist[0] || defaultSymbol;
   uiState.technicalsSymbol = defaultSymbol;
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      return clone(defaultState);
+    }
+    const parsed = JSON.parse(raw);
+    return {
+      settings: { ...defaultState.settings, ...parsed.settings },
+      portfolio: parsed.portfolio ?? [],
+      watchlist: parsed.watchlist ?? [],
+      alerts: parsed.alerts ?? []
+    };
+  } catch (error) {
+    console.error("Failed to load state", error);
+    return clone(defaultState);
+  }
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function resetState() {
+  Object.assign(state, clone(defaultState));
+  saveState();
+  DataService.clearCache();
+}
+
+function resolveTranslation(key, languagePack) {
+  return key.split(".").reduce((acc, part) => (acc && acc[part] !== undefined ? acc[part] : undefined), languagePack);
+}
+
+function t(key, params = {}) {
+  const langPack = translations[state.settings.language] || translations.en;
+  let template = resolveTranslation(key, langPack);
+  if (template === undefined) {
+    template = resolveTranslation(key, translations.en);
+  }
+  if (template === undefined) {
+    return key;
+  }
+  if (typeof template !== "string") {
+    return template;
+  }
+  return template.replace(/\{(\w+)}/g, (match, token) => {
+    if (params[token] !== undefined) {
+      return params[token];
+    }
+    return match;
+  });
+}
+
+function applyTranslations() {
+  document.title = t("app.title");
+  const langMeta = languageOptions[state.settings.language] || languageOptions.en;
+  document.documentElement.lang = langMeta.htmlLang;
+
+  document.querySelectorAll("[data-i18n]").forEach((element) => {
+    const key = element.dataset.i18n;
+    if (!key) {
+      return;
+    }
+    element.textContent = t(key);
+  });
+
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((element) => {
+    const key = element.dataset.i18nPlaceholder;
+    if (!key) {
+      return;
+    }
+    element.setAttribute("placeholder", t(key));
+  });
 }
 
 async function handlePortfolioSubmit(event) {
@@ -506,7 +1016,7 @@ async function handlePortfolioSubmit(event) {
   const price = parseFloat(Dom.portfolio.price.value);
 
   if (!symbol || !Number.isFinite(shares) || !Number.isFinite(price) || shares <= 0 || price <= 0) {
-    alert("Enter valid symbol, shares, and price");
+    alert(t("portfolio.form.invalid"));
     return;
   }
 
@@ -528,11 +1038,13 @@ async function handlePortfolioSubmit(event) {
 
 async function handlePortfolioTableClick(event) {
   const button = event.target.closest("button[data-action]");
-  if (!button) return;
-
+  if (!button) {
+    return;
+  }
   const symbol = button.dataset.symbol;
-  if (!symbol) return;
-
+  if (!symbol) {
+    return;
+  }
   if (button.dataset.action === "remove") {
     state.portfolio = state.portfolio.filter((item) => item.symbol !== symbol);
     saveState();
@@ -543,7 +1055,7 @@ async function handlePortfolioTableClick(event) {
 async function renderPortfolio() {
   const positions = state.portfolio;
   if (!positions.length) {
-    Dom.portfolio.tableBody.innerHTML = `<tr><td colspan="7">No holdings yet. Add a position to get started.</td></tr>`;
+    Dom.portfolio.tableBody.innerHTML = `<tr><td colspan="7">${t("portfolio.empty")}</td></tr>`;
     Dom.portfolio.summary.innerHTML = "";
     return;
   }
@@ -555,7 +1067,7 @@ async function renderPortfolio() {
       const value = position.shares * lastPrice;
       const cost = position.shares * position.avgCost;
       const pl = value - cost;
-      const plPercent = cost === 0 ? 0 : (pl / cost) * 100;
+      const plPercent = cost === 0 ? 0 : pl / cost;
       return {
         ...position,
         lastPrice,
@@ -572,12 +1084,12 @@ async function renderPortfolio() {
       const plClass = row.pl >= 0 ? "positive" : "negative";
       return `<tr>
         <td>${row.symbol}</td>
-        <td>${numberFormatter.format(row.shares)}</td>
-        <td>${currencyFormatter.format(row.avgCost)}</td>
-        <td>${currencyFormatter.format(row.lastPrice)}</td>
-        <td>${currencyFormatter.format(row.value)}</td>
-        <td class="${plClass}">${currencyFormatter.format(row.pl)} (${percentFormatter.format(row.plPercent / 100)})</td>
-        <td><button data-action="remove" data-symbol="${row.symbol}">Remove</button></td>
+        <td>${Formatters.number(row.shares)}</td>
+        <td>${Formatters.currency(row.avgCost)}</td>
+        <td>${Formatters.currency(row.lastPrice)}</td>
+        <td>${Formatters.currency(row.value)}</td>
+        <td class="${plClass}">${Formatters.currency(row.pl)} (${Formatters.percent(row.plPercent)})</td>
+        <td><button data-action="remove" data-symbol="${row.symbol}">${t("common.remove")}</button></td>
       </tr>`;
     })
     .join("");
@@ -585,27 +1097,29 @@ async function renderPortfolio() {
   const totalCost = rows.reduce((sum, row) => sum + row.cost, 0);
   const totalValue = rows.reduce((sum, row) => sum + row.value, 0);
   const totalPL = totalValue - totalCost;
-  const totalPercent = totalCost === 0 ? 0 : (totalPL / totalCost) * 100;
+  const totalPercent = totalCost === 0 ? 0 : totalPL / totalCost;
 
   Dom.portfolio.summary.innerHTML = `
     <div class="summary-card">
-      <h3>Portfolio Value</h3>
-      <p>${currencyFormatter.format(totalValue)}</p>
+      <h3>${t("portfolio.summary.value")}</h3>
+      <p>${Formatters.currency(totalValue)}</p>
     </div>
     <div class="summary-card">
-      <h3>Total Cost Basis</h3>
-      <p>${currencyFormatter.format(totalCost)}</p>
+      <h3>${t("portfolio.summary.cost")}</h3>
+      <p>${Formatters.currency(totalCost)}</p>
     </div>
     <div class="summary-card">
-      <h3>Unrealized P/L</h3>
-      <p>${currencyFormatter.format(totalPL)} (${percentFormatter.format(totalPercent / 100)})</p>
+      <h3>${t("portfolio.summary.pl")}</h3>
+      <p>${Formatters.currency(totalPL)} (${Formatters.percent(totalPercent)})</p>
     </div>`;
 }
 
 async function handleQuotesSubmit(event) {
   event.preventDefault();
   const symbol = Dom.quotes.symbol.value.trim().toUpperCase();
-  if (!symbol) return;
+  if (!symbol) {
+    return;
+  }
   if (!state.watchlist.includes(symbol)) {
     state.watchlist.push(symbol);
     saveState();
@@ -617,10 +1131,12 @@ async function handleQuotesSubmit(event) {
 
 async function handleWatchlistClick(event) {
   const card = event.target.closest(".card[data-symbol]");
-  if (!card) return;
-
-  if (event.target.matches("button[data-action=remove]") || event.target.closest("button[data-action=remove]")) {
-    const symbol = card.dataset.symbol;
+  if (!card) {
+    return;
+  }
+  const removeButton = event.target.closest("button[data-action=remove]");
+  const symbol = card.dataset.symbol;
+  if (removeButton) {
     state.watchlist = state.watchlist.filter((item) => item !== symbol);
     if (uiState.activeQuoteSymbol === symbol) {
       uiState.activeQuoteSymbol = state.watchlist[0] || state.settings.defaultSymbol || "AAPL";
@@ -629,14 +1145,13 @@ async function handleWatchlistClick(event) {
     await renderWatchlist();
     return;
   }
-
-  uiState.activeQuoteSymbol = card.dataset.symbol;
+  uiState.activeQuoteSymbol = symbol;
   await renderWatchlist();
 }
 
 async function renderWatchlist() {
   if (!state.watchlist.length) {
-    Dom.quotes.list.innerHTML = `<p class="small-text">No symbols yet. Add one to start tracking quotes.</p>`;
+    Dom.quotes.list.innerHTML = `<p class="small-text">${t("quotes.empty")}</p>`;
     if (charts.price) {
       charts.price.destroy();
       charts.price = null;
@@ -659,12 +1174,12 @@ async function renderWatchlist() {
         <div class="card-header">
           <div>
             <strong>${symbol}</strong>
-            <div class="small-text">Last: ${currencyFormatter.format(quote.price)}</div>
+            <div class="small-text">${t("quotes.card.last")}: ${Formatters.currency(quote.price)}</div>
           </div>
-          <button data-action="remove" aria-label="Remove ${symbol}">×</button>
+          <button data-action="remove" aria-label="${t("common.remove")}" data-symbol="${symbol}">×</button>
         </div>
         <div class="card-body ${changeClass}">
-          ${currencyFormatter.format(quote.change)} (${percentFormatter.format(quote.changePercent / 100)})
+          ${Formatters.currency(quote.change)} (${Formatters.percent(quote.changePercent / 100)})
         </div>
       </div>`;
     })
@@ -687,14 +1202,13 @@ async function renderQuoteChart(symbol) {
     charts.price.destroy();
   }
 
-  const context = Dom.quotes.chart.getContext("2d");
-  charts.price = new Chart(context, {
+  charts.price = new Chart(Dom.quotes.chart.getContext("2d"), {
     type: "line",
     data: {
       labels,
       datasets: [
         {
-          label: `${symbol} Close`,
+          label: t("quotes.chart.close", { symbol }),
           data: closes,
           borderColor: "#38bdf8",
           backgroundColor: "rgba(56, 189, 248, 0.2)",
@@ -702,7 +1216,7 @@ async function renderQuoteChart(symbol) {
           fill: false
         },
         {
-          label: "SMA 20",
+          label: t("quotes.chart.sma20"),
           data: sma20,
           borderColor: "#22c55e",
           borderDash: [4, 4],
@@ -710,7 +1224,7 @@ async function renderQuoteChart(symbol) {
           fill: false
         },
         {
-          label: "SMA 50",
+          label: t("quotes.chart.sma50"),
           data: sma50,
           borderColor: "#f97316",
           borderDash: [6, 6],
@@ -730,7 +1244,8 @@ async function renderQuoteChart(symbol) {
         tooltip: {
           callbacks: {
             label(context) {
-              return `${context.dataset.label}: ${currencyFormatter.format(context.parsed.y)}`;
+              const value = context.parsed.y;
+              return `${context.dataset.label}: ${Formatters.currency(value)}`;
             }
           }
         }
@@ -753,44 +1268,44 @@ async function handleTechnicalsSubmit(event) {
   event.preventDefault();
   const symbol = Dom.technicals.symbol.value.trim().toUpperCase();
   const interval = Dom.technicals.interval.value;
-  if (!symbol) return;
+  if (!symbol) {
+    return;
+  }
   uiState.technicalsSymbol = symbol;
   await renderTechnicals(symbol, interval);
 }
 
 async function renderTechnicals(symbol, interval) {
-  if (!symbol) return;
+  if (!symbol) {
+    return;
+  }
   const series = await DataService.getSeries(symbol, interval);
   const closes = series.map((point) => point.close);
   const labels = series.map((point) => point.date);
-
   const sma20 = Indicators.sma(closes, 20);
   const sma50 = Indicators.sma(closes, 50);
-  const ema12 = Indicators.ema(closes, 12);
-  const ema26 = Indicators.ema(closes, 26);
   const rsi14 = Indicators.rsi(closes, 14);
   const macd = Indicators.macd(closes);
-  const { shortMA, longMA, signals } = Indicators.crossoverSignals(series, 20, 50);
+  const { signals } = Indicators.crossoverSignals(series, 20, 50);
 
   if (charts.technicals) {
     charts.technicals.destroy();
   }
 
-  const context = Dom.technicals.chart.getContext("2d");
-  charts.technicals = new Chart(context, {
+  charts.technicals = new Chart(Dom.technicals.chart.getContext("2d"), {
     type: "line",
     data: {
       labels,
       datasets: [
         {
-          label: `${symbol} Close`,
+          label: t("technicals.chart.close", { symbol }),
           data: closes,
           borderColor: "#38bdf8",
           fill: false,
           tension: 0.1
         },
         {
-          label: "SMA 20",
+          label: t("technicals.chart.sma20"),
           data: sma20,
           borderColor: "#22c55e",
           borderDash: [5, 5],
@@ -798,7 +1313,7 @@ async function renderTechnicals(symbol, interval) {
           fill: false
         },
         {
-          label: "SMA 50",
+          label: t("technicals.chart.sma50"),
           data: sma50,
           borderColor: "#f97316",
           borderDash: [6, 6],
@@ -811,15 +1326,15 @@ async function renderTechnicals(symbol, interval) {
       responsive: true,
       plugins: {
         legend: {
-          labels: { color: "#e2e8f0" }
+          labels: {
+            color: "#e2e8f0"
+          }
         },
         tooltip: {
           callbacks: {
             label(context) {
-              if (context.dataset.label.includes("SMA")) {
-                return `${context.dataset.label}: ${currencyFormatter.format(context.parsed.y)}`;
-              }
-              return `${context.dataset.label}: ${currencyFormatter.format(context.parsed.y)}`;
+              const value = context.parsed.y;
+              return `${context.dataset.label}: ${Formatters.currency(value)}`;
             }
           }
         }
@@ -842,46 +1357,41 @@ async function renderTechnicals(symbol, interval) {
   const latestRsi = rsi14[latestIndex];
   const latestMacd = macd.macdLine[latestIndex];
   const latestSignal = macd.signalLine[latestIndex];
-  const histogram = macd.histogram[latestIndex];
   const lastSignal = signals.slice(-1)[0];
-
-  const bias = (() => {
-    if (!lastSignal) return "Neutral";
-    const daysAgo = latestIndex - lastSignal.index;
-    const word = lastSignal.type === "buy" ? "Bullish" : "Bearish";
-    return `${word} (signal ${daysAgo} bars ago)`;
-  })();
+  const barsAgo = lastSignal ? latestIndex - lastSignal.index : 0;
+  const biasKey = lastSignal ? (lastSignal.type === "buy" ? "bullish" : "bearish") : "neutral";
+  const bias = t(`technicals.bias.${biasKey}`, { bars: barsAgo });
 
   Dom.technicals.signals.innerHTML = `
     <div class="summary-card">
-      <h3>Last Price</h3>
-      <p>${currencyFormatter.format(latestPrice)}</p>
+      <h3>${t("technicals.summary.price")}</h3>
+      <p>${Formatters.currency(latestPrice)}</p>
     </div>
     <div class="summary-card">
-      <h3>RSI (14)</h3>
-      <p>${numberFormatter.format(latestRsi ?? 0)}</p>
+      <h3>${t("technicals.summary.rsi")}</h3>
+      <p>${Formatters.number(latestRsi)}</p>
     </div>
     <div class="summary-card">
-      <h3>MACD</h3>
-      <p>${numberFormatter.format(latestMacd ?? 0)} / ${numberFormatter.format(latestSignal ?? 0)}</p>
+      <h3>${t("technicals.summary.macd")}</h3>
+      <p>${Formatters.number(latestMacd)} / ${Formatters.number(latestSignal)}</p>
     </div>
     <div class="summary-card">
-      <h3>Bias</h3>
+      <h3>${t("technicals.summary.bias")}</h3>
       <p>${bias}</p>
     </div>
     <div class="signals">
-      <h3>Recent Signals</h3>
+      <h3>${t("technicals.signals.title")}</h3>
       ${signals
         .slice(-5)
         .reverse()
         .map((signal) => {
           const klass = signal.type === "buy" ? "signal" : "signal sell";
           return `<div class="${klass}">
-            <strong>${signal.type.toUpperCase()} &bull; ${signal.date}</strong>
-            <div>Price: ${currencyFormatter.format(signal.price)}</div>
+            <strong>${t(`common.signal.${signal.type}`)} • ${signal.date}</strong>
+            <div>${t("common.price")}: ${Formatters.currency(signal.price)}</div>
           </div>`;
         })
-        .join("") || "<p class=\"small-text\">No crossover signals yet.</p>"}
+        .join("") || `<p class="small-text">${t("technicals.signals.empty")}</p>`}
     </div>`;
 }
 
@@ -891,17 +1401,19 @@ async function handleBacktestSubmit(event) {
   const shortPeriod = parseInt(Dom.backtest.shortInput.value, 10) || 50;
   const longPeriod = parseInt(Dom.backtest.longInput.value, 10) || 200;
   if (!symbol || shortPeriod >= longPeriod) {
-    alert("Enter valid symbol and ensure Short MA < Long MA");
+    alert(t("backtest.form.invalid"));
     return;
   }
   await renderBacktest(symbol, shortPeriod, longPeriod);
 }
 
 async function renderBacktest(symbol, shortPeriod, longPeriod) {
-  if (!symbol || shortPeriod >= longPeriod) return;
+  if (!symbol || shortPeriod >= longPeriod) {
+    return;
+  }
   const series = await DataService.getSeries(symbol, "daily");
   const closes = series.map((point) => point.close);
-  const { shortMA, longMA, signals } = Indicators.crossoverSignals(series, shortPeriod, longPeriod);
+  const { signals } = Indicators.crossoverSignals(series, shortPeriod, longPeriod);
   const capital = 10000;
   let cash = capital;
   let shares = 0;
@@ -919,7 +1431,6 @@ async function renderBacktest(symbol, shortPeriod, longPeriod) {
       trades.push({ type: "sell", date: point.date, price: point.close });
       shares = 0;
     }
-
     const equity = cash + shares * point.close;
     equityCurve.push({ date: point.date, value: equity });
   });
@@ -945,55 +1456,63 @@ async function renderBacktest(symbol, shortPeriod, longPeriod) {
   const cagr = Math.pow(finalValue / capital, 1 / years) - 1;
   const buyHoldCagr = Math.pow(buyHoldValue / capital, 1 / years) - 1;
 
+  const completedTrades = trades.filter((trade) => trade.type === "sell").length;
   const winningTrades = trades.filter((trade, index) => {
-    if (trade.type !== "sell") return false;
+    if (trade.type !== "sell") {
+      return false;
+    }
     const entry = trades.slice(0, index).reverse().find((t) => t.type === "buy");
-    if (!entry) return false;
+    if (!entry) {
+      return false;
+    }
     return trade.price > entry.price;
   }).length;
-  const completedTrades = trades.filter((trade) => trade.type === "sell").length;
+
+  const winRate = completedTrades > 0 ? winningTrades / completedTrades : 0;
 
   Dom.backtest.results.innerHTML = `
     <div class="summary-card">
-      <h3>Strategy Return</h3>
-      <p>${percentFormatter.format(totalReturn)}</p>
+      <h3>${t("backtest.summary.strategyReturn")}</h3>
+      <p>${Formatters.percent(totalReturn)}</p>
     </div>
     <div class="summary-card">
-      <h3>Strategy CAGR</h3>
-      <p>${percentFormatter.format(cagr)}</p>
+      <h3>${t("backtest.summary.strategyCagr")}</h3>
+      <p>${Formatters.percent(cagr)}</p>
     </div>
     <div class="summary-card">
-      <h3>Buy & Hold Return</h3>
-      <p>${percentFormatter.format(buyHoldReturn)}</p>
+      <h3>${t("backtest.summary.buyHoldReturn")}</h3>
+      <p>${Formatters.percent(buyHoldReturn)}</p>
     </div>
     <div class="summary-card">
-      <h3>Buy & Hold CAGR</h3>
-      <p>${percentFormatter.format(buyHoldCagr)}</p>
+      <h3>${t("backtest.summary.buyHoldCagr")}</h3>
+      <p>${Formatters.percent(buyHoldCagr)}</p>
     </div>
     <div class="summary-card">
-      <h3>Completed Trades</h3>
-      <p>${completedTrades} (${percentFormatter.format((winningTrades / Math.max(1, completedTrades)) || 0)})</p>
+      <h3>${t("backtest.summary.completedTrades")}</h3>
+      <p>${t("backtest.summary.tradeStats", {
+        count: completedTrades,
+        winRate: Formatters.percent(winRate)
+      })}</p>
     </div>`;
 
   if (charts.backtest) {
     charts.backtest.destroy();
   }
 
-  const labels = equityCurve.map((point) => point.date);
   charts.backtest = new Chart(Dom.backtest.chart.getContext("2d"), {
     type: "line",
     data: {
-      labels,
+      labels: equityCurve.map((point) => point.date),
       datasets: [
         {
-          label: "Strategy Equity",
+          label: t("backtest.chart.strategy"),
           data: equityCurve.map((point) => point.value),
           borderColor: "#38bdf8",
           tension: 0.1,
           fill: false
         },
         {
-          label: "Buy & Hold",
+          label: t("backtest.chart.buyHold"),
           data: buyHoldCurve.map((point) => point.value),
           borderColor: "#22c55e",
           tension: 0.1,
@@ -1004,11 +1523,21 @@ async function renderBacktest(symbol, shortPeriod, longPeriod) {
     options: {
       responsive: true,
       plugins: {
-        legend: { labels: { color: "#e2e8f0" } }
+        legend: {
+          labels: {
+            color: "#e2e8f0"
+          }
+        }
       },
       scales: {
-        x: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(148, 163, 184, 0.1)" } },
-        y: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(148, 163, 184, 0.1)" } }
+        x: {
+          ticks: { color: "#94a3b8" },
+          grid: { color: "rgba(148, 163, 184, 0.1)" }
+        },
+        y: {
+          ticks: { color: "#94a3b8" },
+          grid: { color: "rgba(148, 163, 184, 0.1)" }
+        }
       }
     }
   });
@@ -1020,18 +1549,24 @@ async function handleDcaSubmit(event) {
   const monthlyAmount = parseFloat(Dom.dca.amount.value);
   const months = parseInt(Dom.dca.months.value, 10);
   if (!symbol || !Number.isFinite(monthlyAmount) || monthlyAmount <= 0 || !Number.isFinite(months) || months <= 0) {
-    alert("Enter valid symbol, monthly amount, and months");
+    alert(t("dca.form.invalid"));
     return;
   }
   await renderDca(symbol, monthlyAmount, months);
 }
 
 async function renderDca(symbol, monthlyAmount, months) {
-  if (!symbol || !Number.isFinite(monthlyAmount) || !Number.isFinite(months)) return;
+  if (!symbol || !Number.isFinite(monthlyAmount) || !Number.isFinite(months)) {
+    return;
+  }
   const series = await DataService.getSeries(symbol, "daily");
   const monthlyPoints = selectMonthlySeries(series, months);
   if (!monthlyPoints.length) {
-    Dom.dca.results.innerHTML = `<p class="small-text">Not enough data for DCA simulation.</p>`;
+    Dom.dca.results.innerHTML = `<p class="small-text">${t("dca.empty")}</p>`;
+    if (charts.dca) {
+      charts.dca.destroy();
+      charts.dca = null;
+    }
     return;
   }
 
@@ -1056,20 +1591,20 @@ async function renderDca(symbol, monthlyAmount, months) {
 
   Dom.dca.results.innerHTML = `
     <div class="summary-card">
-      <h3>Total Invested</h3>
-      <p>${currencyFormatter.format(invested)}</p>
+      <h3>${t("dca.summary.invested")}</h3>
+      <p>${Formatters.currency(invested)}</p>
     </div>
     <div class="summary-card">
-      <h3>Total Shares</h3>
-      <p>${numberFormatter.format(shares)}</p>
+      <h3>${t("dca.summary.shares")}</h3>
+      <p>${Formatters.number(shares)}</p>
     </div>
     <div class="summary-card">
-      <h3>Current Value</h3>
-      <p>${currencyFormatter.format(currentValue)}</p>
+      <h3>${t("dca.summary.value")}</h3>
+      <p>${Formatters.currency(currentValue)}</p>
     </div>
     <div class="summary-card">
-      <h3>Net Gain</h3>
-      <p>${currencyFormatter.format(gain)} (${percentFormatter.format(gainPercent)})</p>
+      <h3>${t("dca.summary.gain")}</h3>
+      <p>${Formatters.currency(gain)} (${Formatters.percent(gainPercent)})</p>
     </div>`;
 
   if (charts.dca) {
@@ -1082,14 +1617,14 @@ async function renderDca(symbol, monthlyAmount, months) {
       labels: progress.map((item) => item.date),
       datasets: [
         {
-          label: "Invested",
+          label: t("dca.chart.invested"),
           data: progress.map((item) => item.invested),
           borderColor: "#94a3b8",
           tension: 0.1,
           fill: false
         },
         {
-          label: "Value",
+          label: t("dca.chart.value"),
           data: progress.map((item) => item.value),
           borderColor: "#38bdf8",
           tension: 0.1,
@@ -1100,11 +1635,21 @@ async function renderDca(symbol, monthlyAmount, months) {
     options: {
       responsive: true,
       plugins: {
-        legend: { labels: { color: "#e2e8f0" } }
+        legend: {
+          labels: {
+            color: "#e2e8f0"
+          }
+        }
       },
       scales: {
-        x: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(148, 163, 184, 0.1)" } },
-        y: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(148, 163, 184, 0.1)" } }
+        x: {
+          ticks: { color: "#94a3b8" },
+          grid: { color: "rgba(148, 163, 184, 0.1)" }
+        },
+        y: {
+          ticks: { color: "#94a3b8" },
+          grid: { color: "rgba(148, 163, 184, 0.1)" }
+        }
       }
     }
   });
@@ -1114,9 +1659,9 @@ function selectMonthlySeries(series, months) {
   const map = new Map();
   for (let i = series.length - 1; i >= 0 && map.size < months; i--) {
     const point = series[i];
-    const month = point.date.slice(0, 7);
-    if (!map.has(month)) {
-      map.set(month, { date: point.date, price: point.close });
+    const monthKey = point.date.slice(0, 7);
+    if (!map.has(monthKey)) {
+      map.set(monthKey, { date: point.date, price: point.close });
     }
   }
   return Array.from(map.values()).sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -1128,7 +1673,7 @@ async function handleAlertsSubmit(event) {
   const rsiLow = parseFloat(Dom.alerts.rsiLow.value);
   const rsiHigh = parseFloat(Dom.alerts.rsiHigh.value);
   if (!symbol || !Number.isFinite(rsiLow) || !Number.isFinite(rsiHigh) || rsiLow >= rsiHigh) {
-    alert("Enter valid symbol and RSI thresholds");
+    alert(t("alerts.form.invalid"));
     return;
   }
 
@@ -1146,7 +1691,9 @@ async function handleAlertsSubmit(event) {
 
 async function handleAlertsListClick(event) {
   const button = event.target.closest("button[data-action=remove]");
-  if (!button) return;
+  if (!button) {
+    return;
+  }
   const id = button.dataset.id;
   state.alerts = state.alerts.filter((alert) => alert.id !== id);
   saveState();
@@ -1155,7 +1702,7 @@ async function handleAlertsListClick(event) {
 
 async function renderAlerts() {
   if (!state.alerts.length) {
-    Dom.alerts.list.innerHTML = `<p class="small-text">No alerts configured. Add one to monitor RSI triggers.</p>`;
+    Dom.alerts.list.innerHTML = `<p class="small-text">${t("alerts.empty")}</p>`;
     return;
   }
 
@@ -1165,57 +1712,103 @@ async function renderAlerts() {
       const closes = series.map((point) => point.close);
       const rsi = Indicators.rsi(closes, 14);
       const latestRsi = rsi[rsi.length - 1];
-      let status = "Neutral";
-      let statusClass = "card";
-      if (latestRsi <= alert.rsiLow) {
-        status = "Oversold";
-        statusClass = "card signal";
-      } else if (latestRsi >= alert.rsiHigh) {
-        status = "Overbought";
-        statusClass = "card signal sell";
-      }
       const lastPrice = closes[closes.length - 1];
+      let statusKey = "neutral";
+      if (latestRsi <= alert.rsiLow) {
+        statusKey = "oversold";
+      } else if (latestRsi >= alert.rsiHigh) {
+        statusKey = "overbought";
+      }
       return {
-        html: `<div class="${statusClass}" data-id="${alert.id}">
-          <div class="card-header">
-            <div>
-              <strong>${alert.symbol}</strong>
-              <div class="small-text">Last: ${currencyFormatter.format(lastPrice)}</div>
-            </div>
-            <button data-action="remove" data-id="${alert.id}">×</button>
-          </div>
-          <div class="card-body">
-            RSI: ${numberFormatter.format(latestRsi)}<br />
-            Low: ${alert.rsiLow} / High: ${alert.rsiHigh}<br />
-            Status: ${status}
-          </div>
-        </div>`
+        id: alert.id,
+        symbol: alert.symbol,
+        lastPrice,
+        latestRsi,
+        statusKey,
+        rsiLow: alert.rsiLow,
+        rsiHigh: alert.rsiHigh
       };
     })
   );
 
-  Dom.alerts.list.innerHTML = cards.map((card) => card.html).join("");
+  Dom.alerts.list.innerHTML = cards
+    .map((card) => {
+      const statusClass =
+        card.statusKey === "oversold" ? "card signal" : card.statusKey === "overbought" ? "card signal sell" : "card";
+      const statusText = t(`alerts.status.${card.statusKey}`);
+      return `<div class="${statusClass}" data-id="${card.id}">
+        <div class="card-header">
+          <div>
+            <strong>${card.symbol}</strong>
+            <div class="small-text">${t("quotes.card.last")}: ${Formatters.currency(card.lastPrice)}</div>
+          </div>
+          <button data-action="remove" data-id="${card.id}" aria-label="${t("common.remove")}">×</button>
+        </div>
+        <div class="card-body">
+          ${t("alerts.card.rsi", { value: Formatters.number(card.latestRsi) })}<br />
+          ${t("alerts.card.thresholds", { low: Formatters.number(card.rsiLow), high: Formatters.number(card.rsiHigh) })}<br />
+          ${t("alerts.card.status", { status: statusText })}
+        </div>
+      </div>`;
+    })
+    .join("");
 }
 
 function handleSettingsSubmit(event) {
   event.preventDefault();
   state.settings.apiKey = Dom.settings.apiKey.value.trim();
   state.settings.defaultSymbol = Dom.settings.defaultSymbol.value.trim().toUpperCase() || "AAPL";
+  state.settings.currency = Dom.settings.currency.value;
+  state.settings.language = Dom.settings.language.value;
+  state.settings.useNetlifyProxy = Dom.settings.netlifyProxy.checked;
   saveState();
   DataService.clearCache();
+  Formatters.update();
   bootstrapState();
-  renderPortfolio();
-  renderWatchlist();
-  renderAlerts();
-  alert("Settings saved.");
+  applyTranslations();
+  renderPortfolio().catch(console.error);
+  renderWatchlist().catch(console.error);
+  renderAlerts().catch(console.error);
+  renderTechnicals(
+    Dom.technicals.symbol.value.trim().toUpperCase(),
+    Dom.technicals.interval.value
+  ).catch(console.error);
+  renderBacktest(
+    Dom.backtest.symbol.value.trim().toUpperCase(),
+    parseInt(Dom.backtest.shortInput.value, 10) || 50,
+    parseInt(Dom.backtest.longInput.value, 10) || 200
+  ).catch(console.error);
+  renderDca(
+    Dom.dca.symbol.value.trim().toUpperCase(),
+    parseFloat(Dom.dca.amount.value) || 100,
+    parseInt(Dom.dca.months.value, 10) || 12
+  ).catch(console.error);
+  alert(t("settings.saveSuccess"));
 }
 
 function handleSettingsReset() {
-  if (!confirm("Reset all data?")) return;
+  if (!confirm(t("settings.resetConfirm"))) {
+    return;
+  }
   resetState();
   bootstrapState();
-  renderPortfolio();
-  renderWatchlist();
-  renderAlerts();
-  alert("Application reset.");
+  applyTranslations();
+  renderPortfolio().catch(console.error);
+  renderWatchlist().catch(console.error);
+  renderAlerts().catch(console.error);
+  renderTechnicals(
+    Dom.technicals.symbol.value.trim().toUpperCase(),
+    Dom.technicals.interval.value
+  ).catch(console.error);
+  renderBacktest(
+    Dom.backtest.symbol.value.trim().toUpperCase(),
+    parseInt(Dom.backtest.shortInput.value, 10) || 50,
+    parseInt(Dom.backtest.longInput.value, 10) || 200
+  ).catch(console.error);
+  renderDca(
+    Dom.dca.symbol.value.trim().toUpperCase(),
+    parseFloat(Dom.dca.amount.value) || 100,
+    parseInt(Dom.dca.months.value, 10) || 12
+  ).catch(console.error);
+  alert(t("settings.resetDone"));
 }

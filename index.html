@@ -3,48 +3,51 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Investment Toolkit</title>
+  <title data-i18n="app.title">Investment Toolkit</title>
   <link rel="stylesheet" href="assets/styles.css" />
 </head>
 <body>
   <header class="app-header">
-    <h1>Investment Toolkit</h1>
+    <h1 data-i18n="app.title">Investment Toolkit</h1>
     <nav class="app-nav">
-      <button data-target="portfolio" class="nav-btn active">Portfolio</button>
-      <button data-target="quotes" class="nav-btn">Quotes</button>
-      <button data-target="technicals" class="nav-btn">Technicals</button>
-      <button data-target="backtest" class="nav-btn">Backtest</button>
-      <button data-target="dca" class="nav-btn">DCA</button>
-      <button data-target="alerts" class="nav-btn">Alerts</button>
-      <button data-target="settings" class="nav-btn">Settings</button>
+      <button data-target="portfolio" class="nav-btn active" data-i18n="nav.portfolio">Portfolio</button>
+      <button data-target="quotes" class="nav-btn" data-i18n="nav.quotes">Quotes</button>
+      <button data-target="technicals" class="nav-btn" data-i18n="nav.technicals">Technicals</button>
+      <button data-target="backtest" class="nav-btn" data-i18n="nav.backtest">Backtest</button>
+      <button data-target="dca" class="nav-btn" data-i18n="nav.dca">DCA</button>
+      <button data-target="alerts" class="nav-btn" data-i18n="nav.alerts">Alerts</button>
+      <button data-target="settings" class="nav-btn" data-i18n="nav.settings">Settings</button>
     </nav>
   </header>
 
   <main class="app-main">
     <section id="portfolio" class="panel active">
-      <h2>Portfolio Tracker</h2>
+      <h2 data-i18n="portfolio.heading">Portfolio Tracker</h2>
       <form id="portfolio-form" class="form-grid">
-        <label>Ticker
-          <input type="text" id="portfolio-symbol" placeholder="e.g. AAPL" required />
+        <label>
+          <span data-i18n="portfolio.form.symbol">Ticker</span>
+          <input type="text" id="portfolio-symbol" placeholder="e.g. AAPL" data-i18n-placeholder="placeholders.symbol" required />
         </label>
-        <label>Shares
+        <label>
+          <span data-i18n="portfolio.form.shares">Shares</span>
           <input type="number" id="portfolio-shares" min="0" step="0.01" required />
         </label>
-        <label>Price
+        <label>
+          <span data-i18n="portfolio.form.price">Price</span>
           <input type="number" id="portfolio-price" min="0" step="0.01" required />
         </label>
-        <button type="submit" class="primary">Add Position</button>
+        <button type="submit" class="primary" data-i18n="portfolio.form.submit">Add Position</button>
       </form>
       <div id="portfolio-summary" class="summary-cards"></div>
       <table id="portfolio-table" class="data-table">
         <thead>
           <tr>
-            <th>Symbol</th>
-            <th>Shares</th>
-            <th>Avg Cost</th>
-            <th>Last Price</th>
-            <th>Value</th>
-            <th>P/L</th>
+            <th data-i18n="portfolio.table.symbol">Symbol</th>
+            <th data-i18n="portfolio.table.shares">Shares</th>
+            <th data-i18n="portfolio.table.avgCost">Avg Cost</th>
+            <th data-i18n="portfolio.table.lastPrice">Last Price</th>
+            <th data-i18n="portfolio.table.value">Value</th>
+            <th data-i18n="portfolio.table.pl">P/L</th>
             <th></th>
           </tr>
         </thead>
@@ -53,15 +56,16 @@
     </section>
 
     <section id="quotes" class="panel">
-      <h2>Quotes & Watchlist</h2>
+      <h2 data-i18n="quotes.heading">Quotes & Watchlist</h2>
       <div class="quotes-controls">
         <form id="quotes-form">
-          <label>Symbol
-            <input type="text" id="quotes-symbol" placeholder="e.g. MSFT" required />
+          <label>
+            <span data-i18n="quotes.form.symbol">Symbol</span>
+            <input type="text" id="quotes-symbol" placeholder="e.g. MSFT" data-i18n-placeholder="placeholders.symbol" required />
           </label>
-          <button type="submit" class="primary">Add to Watchlist</button>
+          <button type="submit" class="primary" data-i18n="quotes.form.submit">Add to Watchlist</button>
         </form>
-        <p class="small-text">Uses Alpha Vantage if API key is saved, otherwise falls back to mock data.</p>
+        <p class="small-text" data-i18n="quotes.hint">Uses Alpha Vantage if API key is saved, otherwise falls back to mock data.</p>
       </div>
       <div id="quotes-list" class="card-grid"></div>
       <div class="chart-container">
@@ -70,18 +74,20 @@
     </section>
 
     <section id="technicals" class="panel">
-      <h2>Technical Analysis</h2>
+      <h2 data-i18n="technicals.heading">Technical Analysis</h2>
       <form id="technicals-form" class="form-grid">
-        <label>Symbol
-          <input type="text" id="technicals-symbol" placeholder="e.g. TSLA" required />
+        <label>
+          <span data-i18n="technicals.form.symbol">Symbol</span>
+          <input type="text" id="technicals-symbol" placeholder="e.g. TSLA" data-i18n-placeholder="placeholders.symbol" required />
         </label>
-        <label>Interval
+        <label>
+          <span data-i18n="technicals.form.interval">Interval</span>
           <select id="technicals-interval">
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
+            <option value="daily" data-i18n="technicals.form.daily">Daily</option>
+            <option value="weekly" data-i18n="technicals.form.weekly">Weekly</option>
           </select>
         </label>
-        <button type="submit" class="primary">Calculate</button>
+        <button type="submit" class="primary" data-i18n="technicals.form.submit">Calculate</button>
       </form>
       <div class="chart-container">
         <canvas id="technicals-chart" width="800" height="360"></canvas>
@@ -90,18 +96,21 @@
     </section>
 
     <section id="backtest" class="panel">
-      <h2>Backtesting</h2>
+      <h2 data-i18n="backtest.heading">Backtesting</h2>
       <form id="backtest-form" class="form-grid">
-        <label>Symbol
-          <input type="text" id="backtest-symbol" placeholder="e.g. SPY" required />
+        <label>
+          <span data-i18n="backtest.form.symbol">Symbol</span>
+          <input type="text" id="backtest-symbol" placeholder="e.g. SPY" data-i18n-placeholder="placeholders.symbol" required />
         </label>
-        <label>Short MA
+        <label>
+          <span data-i18n="backtest.form.short">Short MA</span>
           <input type="number" id="backtest-short" min="1" value="50" />
         </label>
-        <label>Long MA
+        <label>
+          <span data-i18n="backtest.form.long">Long MA</span>
           <input type="number" id="backtest-long" min="1" value="200" />
         </label>
-        <button type="submit" class="primary">Run Backtest</button>
+        <button type="submit" class="primary" data-i18n="backtest.form.submit">Run Backtest</button>
       </form>
       <div id="backtest-results" class="summary-cards"></div>
       <div class="chart-container">
@@ -110,18 +119,21 @@
     </section>
 
     <section id="dca" class="panel">
-      <h2>DCA Simulator</h2>
+      <h2 data-i18n="dca.heading">DCA Simulator</h2>
       <form id="dca-form" class="form-grid">
-        <label>Symbol
-          <input type="text" id="dca-symbol" placeholder="e.g. VOO" required />
+        <label>
+          <span data-i18n="dca.form.symbol">Symbol</span>
+          <input type="text" id="dca-symbol" placeholder="e.g. VOO" data-i18n-placeholder="placeholders.symbol" required />
         </label>
-        <label>Monthly Amount
+        <label>
+          <span data-i18n="dca.form.amount">Monthly Amount</span>
           <input type="number" id="dca-amount" min="0" step="0.01" value="100" />
         </label>
-        <label>Months
+        <label>
+          <span data-i18n="dca.form.months">Months</span>
           <input type="number" id="dca-months" min="1" value="12" />
         </label>
-        <button type="submit" class="primary">Simulate</button>
+        <button type="submit" class="primary" data-i18n="dca.form.submit">Simulate</button>
       </form>
       <div id="dca-results" class="summary-cards"></div>
       <div class="chart-container">
@@ -130,42 +142,60 @@
     </section>
 
     <section id="alerts" class="panel">
-      <h2>Alerts</h2>
+      <h2 data-i18n="alerts.heading">Alerts</h2>
       <form id="alerts-form" class="form-grid">
-        <label>Symbol
-          <input type="text" id="alerts-symbol" placeholder="e.g. NVDA" required />
+        <label>
+          <span data-i18n="alerts.form.symbol">Symbol</span>
+          <input type="text" id="alerts-symbol" placeholder="e.g. NVDA" data-i18n-placeholder="placeholders.symbol" required />
         </label>
-        <label>RSI Low
+        <label>
+          <span data-i18n="alerts.form.rsiLow">RSI Low</span>
           <input type="number" id="alerts-rsi-low" min="0" max="100" value="30" />
         </label>
-        <label>RSI High
+        <label>
+          <span data-i18n="alerts.form.rsiHigh">RSI High</span>
           <input type="number" id="alerts-rsi-high" min="0" max="100" value="70" />
         </label>
-        <button type="submit" class="primary">Save Alert</button>
+        <button type="submit" class="primary" data-i18n="alerts.form.submit">Save Alert</button>
       </form>
       <div id="alerts-list" class="card-grid"></div>
     </section>
 
     <section id="settings" class="panel">
-      <h2>Settings</h2>
+      <h2 data-i18n="settings.heading">Settings</h2>
       <form id="settings-form" class="form-grid">
-        <label>Alpha Vantage API Key
-          <input type="text" id="settings-api-key" placeholder="Enter API key" />
+        <label>
+          <span data-i18n="settings.form.apiKey">Alpha Vantage API Key</span>
+          <input type="text" id="settings-api-key" placeholder="Enter API key" data-i18n-placeholder="placeholders.apiKey" />
         </label>
-        <label>Default Symbol
-          <input type="text" id="settings-default-symbol" placeholder="e.g. AAPL" />
+        <label>
+          <span data-i18n="settings.form.defaultSymbol">Default Symbol</span>
+          <input type="text" id="settings-default-symbol" placeholder="e.g. AAPL" data-i18n-placeholder="placeholders.symbol" />
         </label>
-        <button type="submit" class="primary">Save Settings</button>
-        <button type="button" id="settings-reset" class="danger">Reset App</button>
+        <label>
+          <span data-i18n="settings.form.currency">Display Currency</span>
+          <select id="settings-currency"></select>
+        </label>
+        <label>
+          <span data-i18n="settings.form.language">Language</span>
+          <select id="settings-language"></select>
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" id="settings-netlify-proxy" />
+          <span data-i18n="settings.form.useNetlify">Use Netlify proxy (serverless API key)</span>
+        </label>
+        <button type="submit" class="primary" data-i18n="settings.form.submit">Save Settings</button>
+        <button type="button" id="settings-reset" class="danger" data-i18n="settings.form.reset">Reset App</button>
       </form>
     </section>
   </main>
 
   <footer class="app-footer">
-    <p>Data provided via Alpha Vantage (or mock data). Educational use only.</p>
+    <p data-i18n="footer.disclaimer">Data provided via Alpha Vantage (or mock data). Educational use only.</p>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="env.js" defer></script>
   <script type="module" src="assets/app.js"></script>
 </body>
 </html>
