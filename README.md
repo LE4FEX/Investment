@@ -10,7 +10,7 @@ Interactive single-page web app for tracking and analysing investments with vani
 - **Backtesting** – run SMA crossover simulations versus buy-and-hold, view equity curves, return/CAGR, and trade stats.
 - **DCA Simulator** – model monthly dollar-cost averaging, tracking invested capital, units accumulated, and value over time.
 - **Alerts** – store RSI high/low thresholds and show which symbols are currently oversold or overbought.
-- **Settings** – save an Alpha Vantage API key (optional), pick a default symbol, choose display currency, switch languages (English/ไทย), toggle the Netlify proxy, and reset the entire workspace.
+- **Settings & Controls** – quick header toggles for currency and language (English/ไทย), an API status indicator, and a settings pane to save the Alpha Vantage key, pick a default symbol, toggle the Netlify proxy, and reset the workspace.
 
 ## Getting Started
 
@@ -19,12 +19,12 @@ Interactive single-page web app for tracking and analysing investments with vani
 3. (Optional) Grab a free [Alpha Vantage](https://www.alphavantage.co/support/#api-key) API key and store it under **Settings** → **Alpha Vantage API Key** for live data.
 4. Start adding tickers in the Portfolio or Watchlist. The Technicals, Backtest, DCA, and Alerts panes auto-load using the saved default symbol.
 
-Without an API key, the app automatically falls back to deterministic mock market data so every feature remains usable offline.
+Without an API key, the app automatically falls back to deterministic mock market data so every feature remains usable offline (the header badge switches to *API: Mock data*).
 
-### Internationalisation & Currency
+### Internationalisation, Currency & Status
 
-- Switch between **English** and **Thai** under **Settings → Language**; the interface updates instantly without a page reload.
-- Choose the display currency (USD, THB, EUR, JPY) so charts, tables, and summaries format values with the correct symbol and locale.
+- Use the header toggles to switch between **English** and **Thai** or change the display currency (USD, THB, EUR, JPY); the interface updates instantly without a reload.
+- The header status badge shows whether live Alpha Vantage data is being used (*API: Live*), mocked (*API: Mock data*), or if there was an error.
 - Optional runtime configuration: add an `env.js` file (ignored by git) such as:
 
   ```js

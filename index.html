@@ -18,6 +18,20 @@
       <button data-target="alerts" class="nav-btn" data-i18n="nav.alerts">Alerts</button>
       <button data-target="settings" class="nav-btn" data-i18n="nav.settings">Settings</button>
     </nav>
+    <div class="header-tools">
+      <label class="header-control">
+        <span data-i18n="header.controls.language">Language</span>
+        <select id="global-language"></select>
+      </label>
+      <label class="header-control">
+        <span data-i18n="header.controls.currency">Currency</span>
+        <select id="global-currency"></select>
+      </label>
+      <div class="header-status">
+        <span class="status-label" data-i18n="header.controls.apiStatus">API</span>
+        <span id="api-status" class="status-badge" data-status="unknown" aria-live="polite">API: Unknown</span>
+      </div>
+    </div>
   </header>
 
   <main class="app-main">
@@ -171,14 +185,6 @@
         <label>
           <span data-i18n="settings.form.defaultSymbol">Default Symbol</span>
           <input type="text" id="settings-default-symbol" placeholder="e.g. AAPL" data-i18n-placeholder="placeholders.symbol" />
-        </label>
-        <label>
-          <span data-i18n="settings.form.currency">Display Currency</span>
-          <select id="settings-currency"></select>
-        </label>
-        <label>
-          <span data-i18n="settings.form.language">Language</span>
-          <select id="settings-language"></select>
         </label>
         <label class="checkbox-row">
           <input type="checkbox" id="settings-netlify-proxy" />

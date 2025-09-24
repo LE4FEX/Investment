@@ -27,6 +27,13 @@ const translations = {
       alerts: "Alerts",
       settings: "Settings"
     },
+    header: {
+      controls: {
+        language: "Language",
+        currency: "Currency",
+        apiStatus: "API Status"
+      }
+    },
     placeholders: {
       symbol: "e.g. AAPL",
       apiKey: "Enter API key"
@@ -185,6 +192,14 @@ const translations = {
     footer: {
       disclaimer: "Data provided via Alpha Vantage (or mock data). Educational use only."
     },
+    status: {
+      api: {
+        live: "API: Live",
+        mock: "API: Mock data",
+        error: "API: Error",
+        unknown: "API: Unknown"
+      }
+    },
     common: {
       remove: "Remove",
       price: "Price",
@@ -204,6 +219,13 @@ const translations = {
       dca: "DCA",
       alerts: "แจ้งเตือน",
       settings: "ตั้งค่า"
+    },
+    header: {
+      controls: {
+        language: "ภาษา",
+        currency: "สกุลเงิน",
+        apiStatus: "สถานะ API"
+      }
     },
     placeholders: {
       symbol: "เช่น AAPL",
@@ -363,6 +385,14 @@ const translations = {
     footer: {
       disclaimer: "ข้อมูลจาก Alpha Vantage (หรือข้อมูลจำลอง) ใช้เพื่อการศึกษาเท่านั้น"
     },
+    status: {
+      api: {
+        live: "API: ใช้งานได้",
+        mock: "API: ข้อมูลจำลอง",
+        error: "API: ขัดข้อง",
+        unknown: "API: ไม่ทราบ"
+      }
+    },
     common: {
       remove: "ลบ",
       price: "ราคา",
@@ -453,11 +483,14 @@ const DataService = (() => {
         }
         const data = await response.json();
         if (data.error) {
+          updateApiStatus("error", data.error);
           throw new Error(data.error);
         }
+        updateApiStatus("live");
         return data;
       } catch (error) {
         console.warn("Netlify proxy failed", error);
+        updateApiStatus("error", error.message);
         if (!state.settings.apiKey) {
           throw error;
         }
@@ -470,15 +503,23 @@ const DataService = (() => {
     }
 
     search.set("apikey", state.settings.apiKey);
-    const response = await fetch(`https://www.alphavantage.co/query?${search.toString()}`);
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+    try {
+      const response = await fetch(`https://www.alphavantage.co/query?${search.toString()}`);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const data = await response.json();
+      const message = data.Note || data["Error Message"] || (Object.keys(data).length === 0 ? "Alpha Vantage returned no data" : null);
+      if (message) {
+        updateApiStatus("error", message);
+        throw new Error(message);
+      }
+      updateApiStatus("live");
+      return data;
+    } catch (error) {
+      updateApiStatus("error", error.message);
+      throw error;
     }
-    const data = await response.json();
-    if (data.Note || data["Error Message"] || Object.keys(data).length === 0) {
-      throw new Error(data.Note || data["Error Message"] || "Alpha Vantage returned no data");
-    }
-    return data;
   }
 
   async function getQuote(symbol) {
@@ -513,10 +554,14 @@ const DataService = (() => {
         };
       } catch (error) {
         console.warn("Quote fetch failed, using mock data", error);
+        updateApiStatus("error", error.message);
       }
     }
 
     if (!quote) {
+      if (!state.settings.apiKey && !state.settings.useNetlifyProxy) {
+        updateApiStatus("mock");
+      }
       quote = MockData.getQuote(key);
     }
 
@@ -554,10 +599,14 @@ const DataService = (() => {
           .sort((a, b) => new Date(a.date) - new Date(b.date));
       } catch (error) {
         console.warn("Series fetch failed, using mock data", error);
+        updateApiStatus("error", error.message);
       }
     }
 
     if (!series) {
+      if (!state.settings.apiKey && !state.settings.useNetlifyProxy) {
+        updateApiStatus("mock");
+      }
       series = MockData.getSeries(symbol, interval);
     }
 
@@ -782,6 +831,11 @@ const Indicators = {
 const Dom = {
   panels: document.querySelectorAll(".panel"),
   navButtons: document.querySelectorAll(".nav-btn"),
+  header: {
+    language: document.getElementById("global-language"),
+    currency: document.getElementById("global-currency"),
+    apiStatus: document.getElementById("api-status")
+  },
   portfolio: {
     form: document.getElementById("portfolio-form"),
     symbol: document.getElementById("portfolio-symbol"),
@@ -830,8 +884,6 @@ const Dom = {
     form: document.getElementById("settings-form"),
     apiKey: document.getElementById("settings-api-key"),
     defaultSymbol: document.getElementById("settings-default-symbol"),
-    currency: document.getElementById("settings-currency"),
-    language: document.getElementById("settings-language"),
     netlifyProxy: document.getElementById("settings-netlify-proxy"),
     reset: document.getElementById("settings-reset")
   }
@@ -846,23 +898,11 @@ const charts = {
 
 setupNavigation();
 wireForms();
-populateSettingsOptions();
+populateGlobalSelectors();
 bootstrapState();
+evaluateInitialApiStatus();
 applyTranslations();
-renderPortfolio().catch(console.error);
-renderWatchlist().catch(console.error);
-renderAlerts().catch(console.error);
-renderTechnicals(Dom.technicals.symbol.value.trim().toUpperCase(), Dom.technicals.interval.value).catch(console.error);
-renderBacktest(
-  Dom.backtest.symbol.value.trim().toUpperCase(),
-  parseInt(Dom.backtest.shortInput.value, 10) || 50,
-  parseInt(Dom.backtest.longInput.value, 10) || 200
-).catch(console.error);
-renderDca(
-  Dom.dca.symbol.value.trim().toUpperCase(),
-  parseFloat(Dom.dca.amount.value) || 100,
-  parseInt(Dom.dca.months.value, 10) || 12
-).catch(console.error);
+rerenderAllPanels();
 
 function setupNavigation() {
   Dom.navButtons.forEach((btn) => {
@@ -888,22 +928,57 @@ function wireForms() {
   Dom.alerts.form.addEventListener("submit", handleAlertsSubmit);
   Dom.alerts.list.addEventListener("click", handleAlertsListClick);
 
+  if (Dom.header.language) {
+    Dom.header.language.addEventListener("change", handleLanguageChange);
+  }
+  if (Dom.header.currency) {
+    Dom.header.currency.addEventListener("change", handleCurrencyChange);
+  }
+
   Dom.settings.form.addEventListener("submit", handleSettingsSubmit);
   Dom.settings.reset.addEventListener("click", handleSettingsReset);
 }
 
 let selectorsPopulated = false;
-function populateSettingsOptions() {
+function populateGlobalSelectors() {
   if (selectorsPopulated) {
     return;
   }
-  Dom.settings.currency.innerHTML = currencyOptions
-    .map((option) => `<option value="${option.code}">${option.label}</option>`)
-    .join("");
-  Dom.settings.language.innerHTML = Object.entries(languageOptions)
-    .map(([value, meta]) => `<option value="${value}">${meta.label}</option>`)
-    .join("");
+  if (Dom.header.currency) {
+    Dom.header.currency.innerHTML = currencyOptions
+      .map((option) => `<option value="${option.code}">${option.label}</option>`)
+      .join("");
+  }
+  if (Dom.header.language) {
+    Dom.header.language.innerHTML = Object.entries(languageOptions)
+      .map(([value, meta]) => `<option value="${value}">${meta.label}</option>`)
+      .join("");
+  }
   selectorsPopulated = true;
+}
+
+function handleLanguageChange(event) {
+  const language = event.target.value;
+  if (!languageOptions[language]) {
+    return;
+  }
+  state.settings.language = language;
+  saveState();
+  Formatters.update();
+  applyTranslations();
+  rerenderAllPanels();
+}
+
+function handleCurrencyChange(event) {
+  const currency = event.target.value;
+  const valid = currencyOptions.some((option) => option.code === currency);
+  if (!valid) {
+    return;
+  }
+  state.settings.currency = currency;
+  saveState();
+  Formatters.update();
+  rerenderAllPanels();
 }
 
 function bootstrapState() {
@@ -917,9 +992,14 @@ function bootstrapState() {
 
   Dom.settings.apiKey.value = state.settings.apiKey;
   Dom.settings.defaultSymbol.value = defaultSymbol;
-  Dom.settings.currency.value = state.settings.currency;
-  Dom.settings.language.value = state.settings.language;
   Dom.settings.netlifyProxy.checked = state.settings.useNetlifyProxy;
+
+  if (Dom.header.language) {
+    Dom.header.language.value = state.settings.language;
+  }
+  if (Dom.header.currency) {
+    Dom.header.currency.value = state.settings.currency;
+  }
 
   Dom.portfolio.symbol.value = defaultSymbol;
   Dom.quotes.symbol.value = "";
@@ -932,6 +1012,34 @@ function bootstrapState() {
     ? defaultSymbol
     : state.watchlist[0] || defaultSymbol;
   uiState.technicalsSymbol = defaultSymbol;
+}
+
+function evaluateInitialApiStatus() {
+  if (state.settings.apiKey || state.settings.useNetlifyProxy) {
+    updateApiStatus("unknown");
+  } else {
+    updateApiStatus("mock");
+  }
+}
+
+function rerenderAllPanels() {
+  renderPortfolio().catch(console.error);
+  renderWatchlist().catch(console.error);
+  renderAlerts().catch(console.error);
+  renderTechnicals(
+    Dom.technicals.symbol.value.trim().toUpperCase(),
+    Dom.technicals.interval.value
+  ).catch(console.error);
+  renderBacktest(
+    Dom.backtest.symbol.value.trim().toUpperCase(),
+    parseInt(Dom.backtest.shortInput.value, 10) || 50,
+    parseInt(Dom.backtest.longInput.value, 10) || 200
+  ).catch(console.error);
+  renderDca(
+    Dom.dca.symbol.value.trim().toUpperCase(),
+    parseFloat(Dom.dca.amount.value) || 100,
+    parseInt(Dom.dca.months.value, 10) || 12
+  ).catch(console.error);
 }
 
 function loadState() {
@@ -987,6 +1095,28 @@ function t(key, params = {}) {
   });
 }
 
+function updateApiStatus(status, message = "") {
+  const allowed = new Set(["live", "mock", "error", "unknown"]);
+  apiStatusState.status = allowed.has(status) ? status : "unknown";
+  apiStatusState.message = message;
+  refreshApiStatusLabel();
+}
+
+function refreshApiStatusLabel() {
+  if (!Dom || !Dom.header || !Dom.header.apiStatus) {
+    return;
+  }
+  const el = Dom.header.apiStatus;
+  const { status, message } = apiStatusState;
+  el.dataset.status = status;
+  el.textContent = t(`status.api.${status}`);
+  if (message) {
+    el.setAttribute("title", message);
+  } else {
+    el.removeAttribute("title");
+  }
+}
+
 function applyTranslations() {
   document.title = t("app.title");
   const langMeta = languageOptions[state.settings.language] || languageOptions.en;
@@ -1007,6 +1137,8 @@ function applyTranslations() {
     }
     element.setAttribute("placeholder", t(key));
   });
+
+  refreshApiStatusLabel();
 }
 
 async function handlePortfolioSubmit(event) {
@@ -1758,31 +1890,14 @@ function handleSettingsSubmit(event) {
   event.preventDefault();
   state.settings.apiKey = Dom.settings.apiKey.value.trim();
   state.settings.defaultSymbol = Dom.settings.defaultSymbol.value.trim().toUpperCase() || "AAPL";
-  state.settings.currency = Dom.settings.currency.value;
-  state.settings.language = Dom.settings.language.value;
   state.settings.useNetlifyProxy = Dom.settings.netlifyProxy.checked;
   saveState();
   DataService.clearCache();
   Formatters.update();
   bootstrapState();
+  evaluateInitialApiStatus();
   applyTranslations();
-  renderPortfolio().catch(console.error);
-  renderWatchlist().catch(console.error);
-  renderAlerts().catch(console.error);
-  renderTechnicals(
-    Dom.technicals.symbol.value.trim().toUpperCase(),
-    Dom.technicals.interval.value
-  ).catch(console.error);
-  renderBacktest(
-    Dom.backtest.symbol.value.trim().toUpperCase(),
-    parseInt(Dom.backtest.shortInput.value, 10) || 50,
-    parseInt(Dom.backtest.longInput.value, 10) || 200
-  ).catch(console.error);
-  renderDca(
-    Dom.dca.symbol.value.trim().toUpperCase(),
-    parseFloat(Dom.dca.amount.value) || 100,
-    parseInt(Dom.dca.months.value, 10) || 12
-  ).catch(console.error);
+  rerenderAllPanels();
   alert(t("settings.saveSuccess"));
 }
 
@@ -1792,23 +1907,8 @@ function handleSettingsReset() {
   }
   resetState();
   bootstrapState();
+  evaluateInitialApiStatus();
   applyTranslations();
-  renderPortfolio().catch(console.error);
-  renderWatchlist().catch(console.error);
-  renderAlerts().catch(console.error);
-  renderTechnicals(
-    Dom.technicals.symbol.value.trim().toUpperCase(),
-    Dom.technicals.interval.value
-  ).catch(console.error);
-  renderBacktest(
-    Dom.backtest.symbol.value.trim().toUpperCase(),
-    parseInt(Dom.backtest.shortInput.value, 10) || 50,
-    parseInt(Dom.backtest.longInput.value, 10) || 200
-  ).catch(console.error);
-  renderDca(
-    Dom.dca.symbol.value.trim().toUpperCase(),
-    parseFloat(Dom.dca.amount.value) || 100,
-    parseInt(Dom.dca.months.value, 10) || 12
-  ).catch(console.error);
+  rerenderAllPanels();
   alert(t("settings.resetDone"));
 }
