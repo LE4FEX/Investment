@@ -1,207 +1,316 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title data-i18n="app.title">Investment Toolkit</title>
-  <link rel="stylesheet" href="assets/styles.css" />
-</head>
-<body>
-  <header class="app-header">
-    <h1 data-i18n="app.title">Investment Toolkit</h1>
-    <nav class="app-nav">
-      <button data-target="portfolio" class="nav-btn active" data-i18n="nav.portfolio">Portfolio</button>
-      <button data-target="quotes" class="nav-btn" data-i18n="nav.quotes">Quotes</button>
-      <button data-target="technicals" class="nav-btn" data-i18n="nav.technicals">Technicals</button>
-      <button data-target="backtest" class="nav-btn" data-i18n="nav.backtest">Backtest</button>
-      <button data-target="dca" class="nav-btn" data-i18n="nav.dca">DCA</button>
-      <button data-target="alerts" class="nav-btn" data-i18n="nav.alerts">Alerts</button>
-      <button data-target="settings" class="nav-btn" data-i18n="nav.settings">Settings</button>
-    </nav>
-    <div class="header-tools">
-      <label class="header-control">
-        <span data-i18n="header.controls.language">Language</span>
-        <select id="global-language"></select>
-      </label>
-      <label class="header-control">
-        <span data-i18n="header.controls.currency">Currency</span>
-        <select id="global-currency"></select>
-      </label>
-      <div class="header-status">
-        <span class="status-label" data-i18n="header.controls.apiStatus">API</span>
-        <span id="api-status" class="status-badge" data-status="unknown" aria-live="polite">API: Unknown</span>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Client-side investment dashboard with portfolio tracking, technical analysis, backtesting, and DCA simulation."
+    />
+    <title>Investment Toolkit</title>
+    <link rel="icon" type="image/png" href="/favicon.png" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <h1 data-i18n="app.title">Investment Toolkit</h1>
+        <p class="tagline">Educational market toolbox – not financial advice.</p>
       </div>
-    </div>
-  </header>
+      <nav class="app-nav" aria-label="Primary navigation">
+        <button data-target="portfolio" class="nav-btn active" data-i18n="nav.portfolio">Portfolio</button>
+        <button data-target="quotes" class="nav-btn" data-i18n="nav.quotes">Quotes</button>
+        <button data-target="technicals" class="nav-btn" data-i18n="nav.technicals">Technicals</button>
+        <button data-target="backtest" class="nav-btn" data-i18n="nav.backtest">Backtest</button>
+        <button data-target="dca" class="nav-btn" data-i18n="nav.dca">DCA</button>
+        <button data-target="alerts" class="nav-btn" data-i18n="nav.alerts">Alerts</button>
+        <button data-target="settings" class="nav-btn" data-i18n="nav.settings">Settings</button>
+      </nav>
+      <div class="header-tools">
+        <label class="header-control">
+          <span data-i18n="header.controls.language">Language</span>
+          <select id="global-language" aria-label="Language"></select>
+        </label>
+        <label class="header-control">
+          <span data-i18n="header.controls.currency">Currency</span>
+          <select id="global-currency" aria-label="Currency"></select>
+        </label>
+        <div class="header-status" role="status" aria-live="polite">
+          <span class="status-label" data-i18n="header.controls.apiStatus">API Status</span>
+          <span id="api-status" class="status-badge" data-status="unknown">API: Unknown</span>
+        </div>
+      </div>
+    </header>
 
-  <main class="app-main">
-    <section id="portfolio" class="panel active">
-      <h2 data-i18n="portfolio.heading">Portfolio Tracker</h2>
-      <form id="portfolio-form" class="form-grid">
-        <label>
-          <span data-i18n="portfolio.form.symbol">Ticker</span>
-          <input type="text" id="portfolio-symbol" placeholder="e.g. AAPL" data-i18n-placeholder="placeholders.symbol" required />
-        </label>
-        <label>
-          <span data-i18n="portfolio.form.shares">Shares</span>
-          <input type="number" id="portfolio-shares" min="0" step="0.01" required />
-        </label>
-        <label>
-          <span data-i18n="portfolio.form.price">Price</span>
-          <input type="number" id="portfolio-price" min="0" step="0.01" required />
-        </label>
-        <button type="submit" class="primary" data-i18n="portfolio.form.submit">Add Position</button>
-      </form>
-      <div id="portfolio-summary" class="summary-cards"></div>
-      <table id="portfolio-table" class="data-table">
-        <thead>
-          <tr>
-            <th data-i18n="portfolio.table.symbol">Symbol</th>
-            <th data-i18n="portfolio.table.shares">Shares</th>
-            <th data-i18n="portfolio.table.avgCost">Avg Cost</th>
-            <th data-i18n="portfolio.table.lastPrice">Last Price</th>
-            <th data-i18n="portfolio.table.value">Value</th>
-            <th data-i18n="portfolio.table.pl">P/L</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
-
-    <section id="quotes" class="panel">
-      <h2 data-i18n="quotes.heading">Quotes & Watchlist</h2>
-      <div class="quotes-controls">
-        <form id="quotes-form">
+    <main class="app-main">
+      <section id="portfolio" class="panel active">
+        <div class="panel-header">
+          <h2 data-i18n="portfolio.heading">Portfolio Tracker</h2>
+          <div class="panel-actions">
+            <button id="portfolio-export-csv" class="secondary" data-i18n="portfolio.form.exportCsv">
+              Export CSV
+            </button>
+            <button id="portfolio-export-json" class="secondary" data-i18n="portfolio.form.exportJson">
+              Export JSON
+            </button>
+            <button id="portfolio-import-csv" class="secondary" data-i18n="portfolio.form.importCsv">
+              Import CSV
+            </button>
+            <button id="portfolio-import-json" class="secondary" data-i18n="portfolio.form.importJson">
+              Import JSON
+            </button>
+            <input type="file" id="portfolio-import-file" accept=".csv,.json" hidden />
+          </div>
+        </div>
+        <form id="portfolio-form" class="form-grid" autocomplete="off">
           <label>
-            <span data-i18n="quotes.form.symbol">Symbol</span>
-            <input type="text" id="quotes-symbol" placeholder="e.g. MSFT" data-i18n-placeholder="placeholders.symbol" required />
+            <span data-i18n="portfolio.form.symbol">Ticker</span>
+            <input
+              type="text"
+              id="portfolio-symbol"
+              placeholder="e.g. AAPL"
+              data-i18n-placeholder="placeholders.symbol"
+              required
+            />
           </label>
-          <button type="submit" class="primary" data-i18n="quotes.form.submit">Add to Watchlist</button>
+          <label>
+            <span data-i18n="portfolio.form.shares">Shares</span>
+            <input type="number" id="portfolio-shares" min="0" step="0.01" required />
+          </label>
+          <label>
+            <span data-i18n="portfolio.form.price">Price</span>
+            <input type="number" id="portfolio-price" min="0" step="0.01" required />
+          </label>
+          <button type="submit" class="primary" data-i18n="portfolio.form.submit">Add Position</button>
         </form>
-        <p class="small-text" data-i18n="quotes.hint">Uses Alpha Vantage if API key is saved, otherwise falls back to mock data.</p>
-      </div>
-      <div id="quotes-list" class="card-grid"></div>
-      <div class="chart-container">
-        <canvas id="price-chart" width="800" height="320"></canvas>
-      </div>
-    </section>
+        <div id="portfolio-summary" class="summary-cards" aria-live="polite"></div>
+        <div class="table-wrapper">
+          <table id="portfolio-table" class="data-table">
+            <thead>
+              <tr>
+                <th data-i18n="portfolio.table.symbol">Symbol</th>
+                <th data-i18n="portfolio.table.shares">Shares</th>
+                <th data-i18n="portfolio.table.avgCost">Avg Cost</th>
+                <th data-i18n="portfolio.table.lastPrice">Last Price</th>
+                <th data-i18n="portfolio.table.value">Value</th>
+                <th data-i18n="portfolio.table.pl">P/L</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
 
-    <section id="technicals" class="panel">
-      <h2 data-i18n="technicals.heading">Technical Analysis</h2>
-      <form id="technicals-form" class="form-grid">
-        <label>
-          <span data-i18n="technicals.form.symbol">Symbol</span>
-          <input type="text" id="technicals-symbol" placeholder="e.g. TSLA" data-i18n-placeholder="placeholders.symbol" required />
-        </label>
-        <label>
-          <span data-i18n="technicals.form.interval">Interval</span>
-          <select id="technicals-interval">
-            <option value="daily" data-i18n="technicals.form.daily">Daily</option>
-            <option value="weekly" data-i18n="technicals.form.weekly">Weekly</option>
-          </select>
-        </label>
-        <button type="submit" class="primary" data-i18n="technicals.form.submit">Calculate</button>
-      </form>
-      <div class="chart-container">
-        <canvas id="technicals-chart" width="800" height="360"></canvas>
-      </div>
-      <div id="technicals-signals" class="signals"></div>
-    </section>
+      <section id="quotes" class="panel" aria-labelledby="quotes-heading">
+        <div class="panel-header">
+          <h2 id="quotes-heading" data-i18n="quotes.heading">Quotes & Watchlist</h2>
+          <input
+            type="search"
+            id="quotes-filter"
+            class="search-input"
+            placeholder="Filter symbols..."
+            data-i18n-placeholder="quotes.search.placeholder"
+            aria-label="Filter watchlist"
+          />
+        </div>
+        <div class="quotes-controls">
+          <form id="quotes-form" autocomplete="off">
+            <label>
+              <span data-i18n="quotes.form.symbol">Symbol</span>
+              <input
+                type="text"
+                id="quotes-symbol"
+                placeholder="e.g. MSFT"
+                data-i18n-placeholder="placeholders.symbol"
+                required
+              />
+            </label>
+            <button type="submit" class="primary" data-i18n="quotes.form.submit">Add to Watchlist</button>
+          </form>
+          <p class="small-text" data-i18n="quotes.hint">
+            Uses Alpha Vantage if API key is saved, otherwise falls back to mock data.
+          </p>
+        </div>
+        <div id="quotes-list" class="card-grid" aria-live="polite"></div>
+        <div class="chart-container">
+          <canvas id="price-chart" width="960" height="320" aria-label="Price chart"></canvas>
+        </div>
+      </section>
 
-    <section id="backtest" class="panel">
-      <h2 data-i18n="backtest.heading">Backtesting</h2>
-      <form id="backtest-form" class="form-grid">
-        <label>
-          <span data-i18n="backtest.form.symbol">Symbol</span>
-          <input type="text" id="backtest-symbol" placeholder="e.g. SPY" data-i18n-placeholder="placeholders.symbol" required />
-        </label>
-        <label>
-          <span data-i18n="backtest.form.short">Short MA</span>
-          <input type="number" id="backtest-short" min="1" value="50" />
-        </label>
-        <label>
-          <span data-i18n="backtest.form.long">Long MA</span>
-          <input type="number" id="backtest-long" min="1" value="200" />
-        </label>
-        <button type="submit" class="primary" data-i18n="backtest.form.submit">Run Backtest</button>
-      </form>
-      <div id="backtest-results" class="summary-cards"></div>
-      <div class="chart-container">
-        <canvas id="backtest-chart" width="800" height="360"></canvas>
-      </div>
-    </section>
+      <section id="technicals" class="panel">
+        <div class="panel-header">
+          <h2 data-i18n="technicals.heading">Technical Analysis</h2>
+          <div class="panel-actions">
+            <button id="technicals-reset-zoom" class="secondary" data-i18n="technicals.zoom.reset">
+              Reset Zoom
+            </button>
+          </div>
+        </div>
+        <form id="technicals-form" class="form-grid" autocomplete="off">
+          <label>
+            <span data-i18n="technicals.form.symbol">Symbol</span>
+            <input
+              type="text"
+              id="technicals-symbol"
+              placeholder="e.g. TSLA"
+              data-i18n-placeholder="placeholders.symbol"
+              required
+            />
+          </label>
+          <label>
+            <span data-i18n="technicals.form.interval">Interval</span>
+            <select id="technicals-interval">
+              <option value="daily" data-i18n="technicals.form.daily">Daily</option>
+              <option value="weekly" data-i18n="technicals.form.weekly">Weekly</option>
+            </select>
+          </label>
+          <button type="submit" class="primary" data-i18n="technicals.form.submit">Calculate</button>
+        </form>
+        <fieldset class="indicator-toggles">
+          <legend data-i18n="technicals.toggles.heading">Indicators</legend>
+          <label><input type="checkbox" data-indicator="price" checked /> <span data-i18n="technicals.toggles.price">Price</span></label>
+          <label><input type="checkbox" data-indicator="sma20" checked /> <span data-i18n="technicals.toggles.sma20">SMA 20</span></label>
+          <label><input type="checkbox" data-indicator="sma50" checked /> <span data-i18n="technicals.toggles.sma50">SMA 50</span></label>
+          <label><input type="checkbox" data-indicator="ema12" /> <span data-i18n="technicals.toggles.ema12">EMA 12</span></label>
+          <label><input type="checkbox" data-indicator="ema26" /> <span data-i18n="technicals.toggles.ema26">EMA 26</span></label>
+          <label><input type="checkbox" data-indicator="rsi" checked /> <span data-i18n="technicals.toggles.rsi">RSI</span></label>
+          <label><input type="checkbox" data-indicator="macd" checked /> <span data-i18n="technicals.toggles.macd">MACD</span></label>
+        </fieldset>
+        <div class="chart-container">
+          <canvas id="technicals-chart" width="960" height="360" aria-label="Technical chart"></canvas>
+        </div>
+        <div id="technicals-signals" class="signals" aria-live="polite"></div>
+      </section>
 
-    <section id="dca" class="panel">
-      <h2 data-i18n="dca.heading">DCA Simulator</h2>
-      <form id="dca-form" class="form-grid">
-        <label>
-          <span data-i18n="dca.form.symbol">Symbol</span>
-          <input type="text" id="dca-symbol" placeholder="e.g. VOO" data-i18n-placeholder="placeholders.symbol" required />
-        </label>
-        <label>
-          <span data-i18n="dca.form.amount">Monthly Amount</span>
-          <input type="number" id="dca-amount" min="0" step="0.01" value="100" />
-        </label>
-        <label>
-          <span data-i18n="dca.form.months">Months</span>
-          <input type="number" id="dca-months" min="1" value="12" />
-        </label>
-        <button type="submit" class="primary" data-i18n="dca.form.submit">Simulate</button>
-      </form>
-      <div id="dca-results" class="summary-cards"></div>
-      <div class="chart-container">
-        <canvas id="dca-chart" width="800" height="320"></canvas>
-      </div>
-    </section>
+      <section id="backtest" class="panel">
+        <div class="panel-header">
+          <h2 data-i18n="backtest.heading">Backtesting</h2>
+          <button id="backtest-export-csv" class="secondary" data-i18n="backtest.export.csv">
+            Export Equity CSV
+          </button>
+        </div>
+        <form id="backtest-form" class="form-grid" autocomplete="off">
+          <label>
+            <span data-i18n="backtest.form.symbol">Symbol</span>
+            <input
+              type="text"
+              id="backtest-symbol"
+              placeholder="e.g. SPY"
+              data-i18n-placeholder="placeholders.symbol"
+              required
+            />
+          </label>
+          <label>
+            <span data-i18n="backtest.form.short">Short MA</span>
+            <input type="number" id="backtest-short" min="1" value="50" />
+          </label>
+          <label>
+            <span data-i18n="backtest.form.long">Long MA</span>
+            <input type="number" id="backtest-long" min="1" value="200" />
+          </label>
+          <button type="submit" class="primary" data-i18n="backtest.form.submit">Run Backtest</button>
+        </form>
+        <div id="backtest-results" class="summary-cards" aria-live="polite"></div>
+        <div class="chart-container">
+          <canvas id="backtest-chart" width="960" height="360" aria-label="Backtest equity curve"></canvas>
+        </div>
+      </section>
 
-    <section id="alerts" class="panel">
-      <h2 data-i18n="alerts.heading">Alerts</h2>
-      <form id="alerts-form" class="form-grid">
-        <label>
-          <span data-i18n="alerts.form.symbol">Symbol</span>
-          <input type="text" id="alerts-symbol" placeholder="e.g. NVDA" data-i18n-placeholder="placeholders.symbol" required />
-        </label>
-        <label>
-          <span data-i18n="alerts.form.rsiLow">RSI Low</span>
-          <input type="number" id="alerts-rsi-low" min="0" max="100" value="30" />
-        </label>
-        <label>
-          <span data-i18n="alerts.form.rsiHigh">RSI High</span>
-          <input type="number" id="alerts-rsi-high" min="0" max="100" value="70" />
-        </label>
-        <button type="submit" class="primary" data-i18n="alerts.form.submit">Save Alert</button>
-      </form>
-      <div id="alerts-list" class="card-grid"></div>
-    </section>
+      <section id="dca" class="panel">
+        <div class="panel-header">
+          <h2 data-i18n="dca.heading">DCA Simulator</h2>
+          <button id="dca-export-csv" class="secondary" data-i18n="dca.export.csv">Export CSV</button>
+        </div>
+        <form id="dca-form" class="form-grid" autocomplete="off">
+          <label>
+            <span data-i18n="dca.form.symbol">Symbol</span>
+            <input
+              type="text"
+              id="dca-symbol"
+              placeholder="e.g. VOO"
+              data-i18n-placeholder="placeholders.symbol"
+              required
+            />
+          </label>
+          <label>
+            <span data-i18n="dca.form.amount">Monthly Amount</span>
+            <input type="number" id="dca-amount" min="0" step="0.01" value="100" />
+          </label>
+          <label>
+            <span data-i18n="dca.form.months">Months</span>
+            <input type="number" id="dca-months" min="1" value="12" />
+          </label>
+          <button type="submit" class="primary" data-i18n="dca.form.submit">Simulate</button>
+        </form>
+        <div id="dca-results" class="summary-cards" aria-live="polite"></div>
+        <div class="chart-container">
+          <canvas id="dca-chart" width="960" height="320" aria-label="DCA simulation chart"></canvas>
+        </div>
+      </section>
 
-    <section id="settings" class="panel">
-      <h2 data-i18n="settings.heading">Settings</h2>
-      <form id="settings-form" class="form-grid">
-        <label>
-          <span data-i18n="settings.form.apiKey">Alpha Vantage API Key</span>
-          <input type="text" id="settings-api-key" placeholder="Enter API key" data-i18n-placeholder="placeholders.apiKey" />
-        </label>
-        <label>
-          <span data-i18n="settings.form.defaultSymbol">Default Symbol</span>
-          <input type="text" id="settings-default-symbol" placeholder="e.g. AAPL" data-i18n-placeholder="placeholders.symbol" />
-        </label>
-        <label class="checkbox-row">
-          <input type="checkbox" id="settings-netlify-proxy" />
-          <span data-i18n="settings.form.useNetlify">Use Netlify proxy (serverless API key)</span>
-        </label>
-        <button type="submit" class="primary" data-i18n="settings.form.submit">Save Settings</button>
-        <button type="button" id="settings-reset" class="danger" data-i18n="settings.form.reset">Reset App</button>
-      </form>
-    </section>
-  </main>
+      <section id="alerts" class="panel">
+        <h2 data-i18n="alerts.heading">Alerts</h2>
+        <form id="alerts-form" class="form-grid" autocomplete="off">
+          <label>
+            <span data-i18n="alerts.form.symbol">Symbol</span>
+            <input
+              type="text"
+              id="alerts-symbol"
+              placeholder="e.g. NVDA"
+              data-i18n-placeholder="placeholders.symbol"
+              required
+            />
+          </label>
+          <label>
+            <span data-i18n="alerts.form.rsiLow">RSI Low</span>
+            <input type="number" id="alerts-rsi-low" min="0" max="100" value="30" />
+          </label>
+          <label>
+            <span data-i18n="alerts.form.rsiHigh">RSI High</span>
+            <input type="number" id="alerts-rsi-high" min="0" max="100" value="70" />
+          </label>
+          <button type="submit" class="primary" data-i18n="alerts.form.submit">Save Alert</button>
+        </form>
+        <div id="alerts-list" class="card-grid" aria-live="polite"></div>
+      </section>
 
-  <footer class="app-footer">
-    <p data-i18n="footer.disclaimer">Data provided via Alpha Vantage (or mock data). Educational use only.</p>
-  </footer>
+      <section id="settings" class="panel">
+        <h2 data-i18n="settings.heading">Settings</h2>
+        <form id="settings-form" class="form-grid" autocomplete="off">
+          <label>
+            <span data-i18n="settings.form.apiKey">Alpha Vantage API Key</span>
+            <input type="text" id="settings-api-key" placeholder="Enter API key" data-i18n-placeholder="placeholders.apiKey" />
+          </label>
+          <label>
+            <span data-i18n="settings.form.defaultSymbol">Default Symbol</span>
+            <input type="text" id="settings-default-symbol" placeholder="e.g. AAPL" data-i18n-placeholder="placeholders.symbol" />
+          </label>
+          <label class="checkbox-row">
+            <input type="checkbox" id="settings-netlify-proxy" />
+            <span data-i18n="settings.form.useNetlify">Use Netlify proxy (serverless API key)</span>
+          </label>
+          <div class="settings-actions">
+            <button type="submit" class="primary" data-i18n="settings.form.submit">Save Settings</button>
+            <button type="button" id="settings-reset" class="danger" data-i18n="settings.form.reset">Reset App</button>
+          </div>
+        </form>
+        <section class="privacy-note">
+          <h3>Privacy & Compliance</h3>
+          <ul>
+            <li>Portfolio data stays on this device via browser storage.</li>
+            <li>Use the reset button above to wipe all saved information.</li>
+            <li>Respect the <a href="https://www.alphavantage.co/terms_of_service/" rel="noopener" target="_blank">Alpha Vantage terms of service</a> and rate limits (5 calls/min, 500/day).</li>
+          </ul>
+        </section>
+      </section>
+    </main>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="env.js" defer></script>
-  <script type="module" src="assets/app.js"></script>
-</body>
+    <footer class="app-footer">
+      <p data-i18n="footer.disclaimer">Educational use only. Not financial advice.</p>
+      <p>Data cached locally with TTL to respect API limits. Portfolio storage lives in your browser.</p>
+    </footer>
+
+    <script type="module" src="/env.js"></script>
+    <script type="module" src="/src/main.js"></script>
+  </body>
 </html>
